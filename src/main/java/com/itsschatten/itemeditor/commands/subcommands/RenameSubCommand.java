@@ -87,9 +87,16 @@ public class RenameSubCommand extends PlayerSubCommand {
 
     @Override
     public List<String> getTabComplete(CommandSender sender, String[] args) {
-        if (testPermissionSilent(sender) && args.length == 1) {
-            return Stream.of("-clear", "-view").filter((name) -> name.contains(args[0].toLowerCase(Locale.ROOT))).toList();
+        if (testPermissionSilent(sender)) {
+            if (args.length == 1 && sender instanceof final Player player) {
+                final ItemMeta meta = player.getInventory().getItemInMainHand().getItemMeta();
+
+                return Stream.of("-clear", "-view", meta.hasDisplayName() ? MiniMessage.miniMessage().serialize(Objects.requireNonNull(meta.displayName())) : "")
+                        .filter(String::isBlank)
+                        .filter((name) -> name.contains(args[0].toLowerCase(Locale.ROOT))).toList();
+            }
         }
+
         return super.getTabComplete(sender, args);
     }
 }

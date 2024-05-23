@@ -6,6 +6,7 @@ import com.itsschatten.yggdrasil.commands.PlayerSubCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -15,6 +16,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 public class ItemNameSubCommand extends PlayerSubCommand {
@@ -86,8 +88,14 @@ public class ItemNameSubCommand extends PlayerSubCommand {
 
     @Override
     public List<String> getTabComplete(CommandSender sender, String[] args) {
-        if (testPermissionSilent(sender) && args.length == 1) {
-            return Stream.of("-clear", "-view").filter((name) -> name.contains(args[0].toLowerCase(Locale.ROOT))).toList();
+        if (testPermissionSilent(sender)) {
+            if (args.length == 1 && sender instanceof final Player player) {
+                final ItemMeta meta = player.getInventory().getItemInMainHand().getItemMeta();
+
+                return Stream.of("-clear", "-view", meta.hasItemName() ? MiniMessage.miniMessage().serialize(Objects.requireNonNull(meta.itemName())) : "")
+                        .filter(String::isBlank)
+                        .filter((name) -> name.contains(args[0].toLowerCase(Locale.ROOT))).toList();
+            }
         }
         return super.getTabComplete(sender, args);
     }

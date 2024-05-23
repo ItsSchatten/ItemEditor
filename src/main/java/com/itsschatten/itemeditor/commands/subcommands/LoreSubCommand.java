@@ -9,6 +9,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextReplacementConfig;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.apache.commons.io.FileUtils;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -85,7 +86,7 @@ public class LoreSubCommand extends PlayerSubCommand {
                     // Wrap the string from the third argument
                     lore.addAll(StringWrapUtils.convertStringToComponentList("<!i>" + String.join(" ", Arrays.copyOfRange(args, 2, args.length))));
 
-                    successString = "<primary>Added <reset>'" + String.join(" ", Arrays.copyOfRange(args, 2, args.length)) + "<reset>' <gray>(wrapped)</gray> <primary>to your item's lore.";
+                    successString = "<primary>Added <reset>'<dark_purple>" + String.join(" ", Arrays.copyOfRange(args, 2, args.length)) + "<reset>' <gray>(wrapped)</gray> <primary>to your item's lore.";
                 } else {
                     // Give a hint about how to wrap a lore line.
                     if (args.length == 2 && args[1].equalsIgnoreCase("-wrap")) {
@@ -93,7 +94,7 @@ public class LoreSubCommand extends PlayerSubCommand {
                     }
 
                     lore.add(StringUtil.color("<!i>" + loreLine));
-                    successString = "<primary>Added <reset>'" + loreLine + "<reset>'<primary> to your item's lore.";
+                    successString = "<primary>Added <reset>'<dark_purple>" + loreLine + "<reset>'<primary> to your item's lore.";
                 }
             }
 
@@ -129,7 +130,7 @@ public class LoreSubCommand extends PlayerSubCommand {
                     } else {
                         lore.add(number, StringUtil.color("<!i>" + line));
                     }
-                    successString = "<primary>Inserted <reset>'" + line + "<reset>'<primary> to position " + number + " in your item's lore.";
+                    successString = "<primary>Inserted <reset>'<dark_purple>" + line + "<reset>'<primary> to position " + number + " in your item's lore.";
                 }
 
             }
@@ -138,6 +139,11 @@ public class LoreSubCommand extends PlayerSubCommand {
             case "set" -> {
                 // Check if we have a valid item and the meta is also valid.
                 checkValid(stack, meta);
+
+                if (args.length < 2) {
+                    tell("<red>Please provide a lore line to set.");
+                    return;
+                }
 
                 // Get the lore line number to remove.
                 final int number = getLoreLine(lore, 1, args);
@@ -152,13 +158,18 @@ public class LoreSubCommand extends PlayerSubCommand {
                     lore.set(number, StringUtil.color("<!i>" + line));
                 }
 
-                successString = "<primary>Set position <secondary>#" + number + "</secondary> in your item's lore to <reset>'" + line + "<reset>'<primary>.";
+                successString = "<primary>Set position <secondary>#" + number + "</secondary> in your item's lore to <reset>'<dark_purple>" + line + "<reset>'<primary>.";
             }
 
             // Remove a lore line.
             case "remove" -> {
                 // Check if we have a valid item and the meta is also valid.
                 checkValid(stack, meta);
+
+                if (args.length < 2) {
+                    tell("<red>Please provide a lore line to remove.");
+                    return;
+                }
 
                 // Get the lore line number to remove.
                 final int number = getLoreLine(lore, 1, args);
@@ -186,7 +197,7 @@ public class LoreSubCommand extends PlayerSubCommand {
 
                 // Make sure we have the appropriate number of arguments.
                 if (args.length < 3) {
-                    returnTell("<red>Please supply a text to replace and the what to replace it with.\n<secondary>/ie lore replace <to replace> <replacement>");
+                    returnTell("<red>Please supply a text to replace and what to replace it with.\n<secondary>/ie lore replace <to replace> <replacement>");
                     return;
                 }
 
@@ -280,7 +291,10 @@ public class LoreSubCommand extends PlayerSubCommand {
                 // Check if our meta is an instance of BookMeta.
                 if (meta instanceof final BookMeta bookMeta) {
                     // Place all the pages in the clipboard.
-                    clipboard.put(user.getUniqueId(), bookMeta.pages());
+                    final List<Component> bookPages = new ArrayList<>();
+                    bookMeta.pages().forEach((page) -> bookPages.add(StringUtil.color(PlainTextComponentSerializer.plainText().serialize(page))));
+                    clipboard.put(user.getUniqueId(), bookPages);
+
                     tell("""
                             <primary>Copied the book's pages to your clipboard!
                             To paste it execute '<click:run_command:'/ie lore paste'><hover:show_text:'<gray>Click me to execute the command!'><secondary>/ie lore paste</secondary></hover></click>'!
@@ -379,8 +393,8 @@ public class LoreSubCommand extends PlayerSubCommand {
                         .filter((name) -> name.contains(args[0].toLowerCase(Locale.ROOT))).toList();
             }
 
-            if (args.length == 2) {
-                final ItemMeta meta = ((Player) sender).getInventory().getItemInMainHand().getItemMeta();
+            if (args.length == 2 && sender instanceof final Player player) {
+                final ItemMeta meta = player.getInventory().getItemInMainHand().getItemMeta();
 
                 return switch (args[0].toLowerCase()) {
                     case "add" -> Stream.of("-wrap").toList();
@@ -393,8 +407,8 @@ public class LoreSubCommand extends PlayerSubCommand {
                 };
             }
 
-            if (args.length == 3) {
-                final ItemMeta meta = ((Player) sender).getInventory().getItemInMainHand().getItemMeta();
+            if (args.length == 3 && sender instanceof final Player player) {
+                final ItemMeta meta = player.getInventory().getItemInMainHand().getItemMeta();
 
                 return switch (args[0].toLowerCase()) {
                     case "insert" ->

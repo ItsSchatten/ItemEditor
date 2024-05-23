@@ -2,7 +2,7 @@ plugins {
     id("java")
 
     // Use Mojang mappings and a few other PaperAPI QOL.
-    id("io.papermc.paperweight.userdev") version "1.6.3"
+    id("io.papermc.paperweight.userdev") version "1.7.1"
     // Automatic lombok and delombok configuration
     id("io.freefair.lombok") version "8.6"
 

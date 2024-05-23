@@ -62,10 +62,10 @@ public class EnchantmentGlintSubCommand extends PlayerSubCommand {
             meta.setEnchantmentGlintOverride(null);
             tell("<primary>Your item's enchantment glint override has been <secondary>removed</secondary>!");
         } else if (args[0].equalsIgnoreCase("-view")) {
-            if (meta.hasEnchantmentGlintOverride()) {
+            if (!meta.hasEnchantmentGlintOverride()) {
                 tell("<primary>Your item does not currently have an override for enchantment glint!");
             } else {
-                tell("<primary>Your item's enchantment glint override is <secondary>currently" + meta.getEnchantmentGlintOverride() + "</secondary>!");
+                tell("<primary>Your item's enchantment glint override is <secondary>currently " + meta.getEnchantmentGlintOverride() + "</secondary>!");
             }
             return;
         } else {
