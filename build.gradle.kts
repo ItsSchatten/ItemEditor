@@ -10,8 +10,17 @@ plugins {
     id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
+// Used to configure which "path" we are compiling.
+ext {
+    println("Checking environment...")
+    set("env", System.getProperty("env") ?: "release")
+    set("isDev", get("env") == "dev")
+    println("Found environment: " + get("env"))
+    println("Dev Mode?: " + get("isDev"))
+}
+
 group = "com.itsschatten"
-version = project.property("version") as String
+version = project.property("version")!!
 java.sourceCompatibility = JavaVersion.VERSION_21
 
 repositories {
@@ -43,11 +52,20 @@ dependencies {
 
 tasks {
     assemble {
-        dependsOn(reobfJar)
+        dependsOn(shadowJar)
     }
 
     reobfJar {
-        outputJar.set(file(System.getProperty("user.home") + File.separator + project.property("dev-path") + File.separator + project.name + "-dev-build.jar"))
+        if (ext.get("isDev") as Boolean) {
+            if (project.property("dev-path").toString().isNotBlank()) {
+                outputJar.set(file(System.getProperty("user.home") + File.separator + project.property("dev-path") + File.separator + project.name + "-dev-build.jar"))
+            }
+        } else {
+            if (project.property("build-path").toString().isNotBlank()) {
+                outputJar.set(file(System.getProperty("user.home") + File.separator + project.property("build-path") + File.separator + project.name + "-" + project.version + ".jar"))
+            }
+        }
+
     }
 
     compileJava {
