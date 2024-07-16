@@ -22,49 +22,51 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
-public class ItemNameSubCommand extends BrigadierCommand {
-
+public class DisplaySubCommand extends BrigadierCommand {
     // Description/Usage message for this sub command.
     @Override
     public @NotNull Component descriptionComponent() {
-        return StringUtil.color("<primary>/ie name <secondary><name></secondary>").hoverEvent(StringUtil.color("""
-                <primary>Set the item's default name.
+        return StringUtil.color("<primary>/ie display <secondary><name></secondary>").hoverEvent(StringUtil.color("""
+                <primary>Renames the item.
                 \s
-                ◼ <secondary><name><required> </secondary> The name for the item.
-                ◼ <secondary>[-view]<optional></secondary> View the item's current name.
-                ◼ <secondary>[-clear]<optional></secondary> Clear the name.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand("/ie name "));
+                ◼ <secondary><name></secondary><required> The name for the item.
+                ◼ <secondary>[-view]<optional></secondary> View the item's current display name.
+                ◼ <secondary>[-clear]<optional></secondary> Clear the name.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand("/ie display "));
     }
 
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
-        return Commands.literal("name")
-                .then(Commands.argument("name", StringArgumentType.greedyString())
-                        .executes(context -> updateName(context, (stack, meta) -> {
-                            final Component component = StringUtil.color("<!i>" + StringArgumentType.getString(context, "name"));
-                            meta.itemName(component);
+        return Commands.literal("display")
+                .then(Commands.argument("display name", StringArgumentType.greedyString())
+                        .executes(context -> updateDisplay(context, (stack, meta) -> {
+                            final Component component = StringUtil.color("<!i>" + StringArgumentType.getString(context, "display name"));
+                            meta.displayName(component);
 
-                            Utils.tell(context.getSource(), StringUtil.color("<primary>Set your item's name to <reset>'").append(component).append(StringUtil.color("<reset>'<primary>.")));
-
-                            if (meta.hasDisplayName()) {
-                                Utils.tell(context.getSource(), "<i><gray>Your item has a set display name so your set item name will not appear.");
-                                Utils.tell(context.getSource(), "<i><dark_gray><click:run_command:'/ie display -clear'><hover:show_text:'<gray>This will run '/ie display -clear'.'>[Click to remove the display name.]</hover></click>");
-                            }
-
+                            Utils.tell(context.getSource(), StringUtil.color("<primary>Set your item's display name to <reset>'")
+                                    .append(component)
+                                    .append(StringUtil.color("<reset>'<primary>.")));
                             return meta;
                         }))
                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(List.of(getName(context)), builder))
                 )
                 .then(Commands.literal("-clear")
-                        .executes(context -> updateName(context, (stack, meta) -> {
-                            meta.itemName(null);
+                        .executes(context -> updateDisplay(context, (stack, meta) -> {
+                            meta.displayName(null);
 
-                            Utils.tell(context.getSource(), StringUtil.color("<primary>Your item's name has been reset to <yellow>" + stack.getType().getKey().getKey().toLowerCase().replace("_", " ") + "</yellow>."));
+                            Utils.tell(context.getSource(), StringUtil.color("<primary>Your item's display name has been reset to <white>" +
+                                    (meta.hasItemName() ? MiniMessage.miniMessage().serialize(meta.itemName()) + " <gray>(<i>custom item name</i>)</gray>"
+                                            : stack.getType().getKey().getKey().toLowerCase().replace("_", " ")) + "</white>."));
                             return meta;
                         }))
                 )
                 .then(Commands.literal("-view")
                         .executes(this::handleView)
-                );
+                )
+                .executes(context -> updateDisplay(context, (stack, meta) -> {
+                    meta.displayName(Component.text(""));
+                    Utils.tell(context.getSource(), StringUtil.color("<primary>Your item's display name has been set to <secondary>an empty string</secondary>."));
+                    return meta;
+                }));
     }
 
     private @NotNull String getName(final @NotNull CommandContext<CommandSourceStack> context) {
@@ -82,10 +84,10 @@ public class ItemNameSubCommand extends BrigadierCommand {
             return "";
         }
 
-        return meta.hasItemName() ? MiniMessage.miniMessage().serialize(Objects.requireNonNull(meta.itemName())) : "";
+        return meta.hasDisplayName() ? MiniMessage.miniMessage().serialize(Objects.requireNonNull(meta.displayName())) : "";
     }
 
-    private int updateName(final @NotNull CommandContext<CommandSourceStack> context, BiFunction<ItemStack, ItemMeta, ItemMeta> function) {
+    private int updateDisplay(final @NotNull CommandContext<CommandSourceStack> context, BiFunction<ItemStack, ItemMeta, ItemMeta> function) {
         final Player user = (Player) context.getSource().getSender();
 
         // Get the item stack in the user's main hand.
@@ -123,18 +125,11 @@ public class ItemNameSubCommand extends BrigadierCommand {
             return 0;
         }
 
-        if (meta.hasItemName()) {
-            Utils.tell(user, StringUtil.color("<primary>Your item's name is currently:").appendSpace().append(meta.itemName()).colorIfAbsent(meta.hasRarity() ? meta.getRarity().color() : NamedTextColor.WHITE).append(StringUtil.color("<primary>.")));
-        } else {
-            Utils.tell(user, "<primary>Your item doesn't currently have an item name.");
-        }
-
         if (meta.hasDisplayName()) {
-            Utils.tell(context.getSource(), "<i><gray>Your item has a set display name so your set item name will not appear.");
-            Utils.tell(context.getSource(), "<i><dark_gray><click:run_command:'/ie display -clear'><hover:show_text:'<gray>This will run '/ie display -clear'.'>[Click to remove the display name.]</hover></click>");
+            Utils.tell(user, StringUtil.color("<primary>Your item's display name is currently:").appendSpace().append(Objects.requireNonNull(meta.displayName())).colorIfAbsent(NamedTextColor.WHITE).append(StringUtil.color("<primary>.")));
+        } else {
+            Utils.tell(user, "<primary>Your item doesn't currently have a display item name.");
         }
-
         return 1;
     }
-
 }

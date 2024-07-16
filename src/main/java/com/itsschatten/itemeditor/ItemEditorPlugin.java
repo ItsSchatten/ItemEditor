@@ -16,8 +16,6 @@ public class ItemEditorPlugin extends JavaPlugin {
     public void onEnable() {
         Utils.setInstance(this, true, false);
 
-        Utils.registerCommands(new ItemEditorCommand());
-
         StringUtil.addResolvers(TagResolver.builder()
                 // Prefix for the plugin.
                 .tag("prefix", Tag.selfClosingInserting(StringUtil.color("<gradient:#D8D8F6:#978897>ItemEditor</gradient>")))

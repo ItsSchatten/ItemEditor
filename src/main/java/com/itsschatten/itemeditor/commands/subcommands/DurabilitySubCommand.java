@@ -1,145 +1,151 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
 import com.itsschatten.yggdrasil.StringUtil;
-import com.itsschatten.yggdrasil.commands.CommandBase;
-import com.itsschatten.yggdrasil.commands.PlayerSubCommand;
+import com.itsschatten.yggdrasil.Utils;
+import com.itsschatten.yggdrasil.commands.BrigadierCommand;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
+import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-import java.util.stream.Stream;
+import java.util.function.BiFunction;
 
-public class DurabilitySubCommand extends PlayerSubCommand {
-
-    /**
-     * Constructs the command.
-     *
-     * @param owningCommand The command that "owns" this sub command, used to register this sub command in tab complete.
-     */
-    public DurabilitySubCommand(@NotNull CommandBase owningCommand) {
-        super("durability", List.of("damage"), owningCommand);
-    }
+public class DurabilitySubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
-    public Component descriptionComponent() {
-        return StringUtil.color("<primary>" + commandString() + " <secondary><repair|add|set|remove|damage #></secondary>").hoverEvent(StringUtil.color("""
-                <primary>Sets a damageable item's damage..
+    public @NotNull Component descriptionComponent() {
+        return StringUtil.color("<primary>/ie durability <secondary><repair|add|set|remove|damage #></secondary>").hoverEvent(StringUtil.color("""
+                <primary>Sets a damageable item's damage or it's maximum damage.
                 \s
                 ◼ <secondary><damage #><required></secondary> The damage value.
                 ◼ <secondary><repair><first></secondary> Repair the item.
                 ◼ <secondary><add><first></secondary> Add the damage to the item.
                 ◼ <secondary><set><first></secondary> Set the damage of the item.
                 ◼ <secondary><remove><first></secondary> Remove the damage from the item.
-                ◼ <secondary>[-view]<optional></secondary> See the current damage.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand(commandString() + " "));
+                ◼ <secondary><max><first> <maximum damage><required></secondary> Remove the damage from the item.
+                ◼ <secondary>[-view]<optional></secondary> See the current damage.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand("/ie durability "));
     }
 
     @Override
-    protected void run(@NotNull Player user, String[] args) {
+    public LiteralArgumentBuilder<CommandSourceStack> command() {
+        return Commands.literal("durability")
+                .then(Commands.literal("-view")
+                        .executes(context -> {
+                            final Player user = (Player) context.getSource().getSender();
+                            // Get the item stack in the user's main hand.
+                            final ItemStack stack = user.getInventory().getItemInMainHand();
+                            if (stack.isEmpty()) {
+                                Utils.tell(user, "<red>You need to be holding an item in your hand.");
+                                return 0;
+                            }
+
+                            // Get the item's meta and check if it's null, it really shouldn't be but safety.
+                            if (!(stack.getItemMeta() instanceof final Damageable meta)) {
+                                Utils.tell(user, "<red>You need to be holding an item in your hand.");
+                                return 0;
+                            }
+
+                            if (meta.hasMaxDamage()) {
+                                Utils.tell(user, "<primary>Your item's damage is currently <secondary>" + meta.getDamage() + "</secondary><gray>/" + meta.getMaxDamage() + " (<hover:show_text:'<primary>Default: <secondary>" + stack.getType().getMaxDurability() + "</secondary>'><i>custom max damage, hover for default.</i></hover>)</gray>.");
+                            } else {
+                                Utils.tell(user, "<primary>Your item's damage is currently <secondary>" + meta.getDamage() + "</secondary><gray>/" + stack.getType().getMaxDurability() + "</gray>.");
+                            }
+
+                            return 1;
+                        })
+                )
+                .then(Commands.literal("repair")
+                        .executes(context -> updateDurability((Player) context.getSource().getSender(), (meta, defaultMax) -> {
+                            meta.setDamage(0);
+                            Utils.tell(context.getSource(), "<primary>Repaired your item!<br>Set the damage of your item to <secondary>0</secondary><gray>/" + (meta.hasMaxDamage() ? meta.getMaxDamage() : defaultMax) + "</gray>.");
+                            return meta;
+                        }))
+                )
+                .then(Commands.literal("max")
+                        .then(Commands.argument("maximum durability", IntegerArgumentType.integer(1))
+                                .then(Commands.literal("-reset")
+                                        .executes(context -> updateDurability((Player) context.getSource().getSender(), (meta, defaultMax) -> {
+                                            meta.resetDamage();
+                                            Utils.tell(context.getSource(), "<primary>Reset your item's maximum durability to <secondary>" + defaultMax + "</secondary>!");
+                                            return meta;
+                                        }))
+                                )
+                                .executes(context -> updateDurability((Player) context.getSource().getSender(), (meta, defaultMax) -> {
+                                    final int amount = IntegerArgumentType.getInteger(context, "maximum durability");
+
+                                    meta.setMaxDamage(amount);
+                                    Utils.tell(context.getSource(), "<primary>Updated your item's max damage to <secondary>" + amount + "</secondary>!");
+                                    return meta;
+                                }))
+                        )
+                )
+                .then(Commands.argument("durability", IntegerArgumentType.integer(0))
+                        .executes(context -> updateDurability((Player) context.getSource().getSender(), (meta, defaultMax) -> {
+                            final int amount = IntegerArgumentType.getInteger(context, "durability");
+
+                            meta.setDamage(amount);
+                            Utils.tell(context.getSource(), "<primary>Set the damage of your item to <secondary>" + amount + "</secondary><gray>/" + (meta.hasMaxDamage() ? meta.getMaxDamage() : defaultMax) + "</gray>.");
+                            return meta;
+                        }))
+                )
+                .then(Commands.literal("set")
+                        .then(Commands.argument("durability", IntegerArgumentType.integer(0))
+                                .executes(context -> updateDurability((Player) context.getSource().getSender(), (meta, defaultMax) -> {
+                                    final int amount = IntegerArgumentType.getInteger(context, "durability");
+
+                                    meta.setDamage(amount);
+                                    Utils.tell(context.getSource(), "<primary>Set the damage of your item to <secondary>" + amount + "</secondary><gray>/" + (meta.hasMaxDamage() ? meta.getMaxDamage() : defaultMax) + "</gray>.");
+                                    return meta;
+                                }))
+                        )
+                )
+                .then(Commands.literal("remove")
+                        .then(Commands.argument("durability", IntegerArgumentType.integer(0))
+                                .executes(context -> updateDurability((Player) context.getSource().getSender(), (meta, defaultMax) -> {
+                                    final int amount = IntegerArgumentType.getInteger(context, "durability");
+
+                                    meta.setDamage(meta.getDamage() - amount);
+                                    Utils.tell(context.getSource(), "<primary>Removed <secondary>" + amount + "</secondary> damage from your item. <gray>(" + meta.getDamage() + "/" + (meta.hasMaxDamage() ? meta.getMaxDamage() : defaultMax) + ")");
+                                    return meta;
+                                }))
+                        )
+                )
+                .then(Commands.literal("add")
+                        .then(Commands.argument("durability", IntegerArgumentType.integer(0))
+                                .executes(context -> updateDurability((Player) context.getSource().getSender(), (meta, defaultMax) -> {
+                                    final int amount = IntegerArgumentType.getInteger(context, "durability");
+
+                                    meta.setDamage(amount + meta.getDamage());
+                                    Utils.tell(context.getSource(), "<primary>Added <secondary>" + amount + "</secondary> damage to your item. <gray>(" + meta.getDamage() + "/" + (meta.hasMaxDamage() ? meta.getMaxDamage() : defaultMax) + ")");
+                                    return meta;
+                                }))
+                        )
+                )
+                ;
+    }
+
+    private int updateDurability(final @NotNull Player user, final BiFunction<Damageable, Short, Damageable> function) {
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
         if (stack.isEmpty()) {
-            returnTell("<red>You need to be holding an item in your hand.");
-            return;
+            Utils.tell(user, "<red>You need to be holding an item in your hand.");
+            return 0;
         }
 
         // Get the item's meta and check if it's null, it really shouldn't be but safety.
         if (!(stack.getItemMeta() instanceof final Damageable meta)) {
-            returnTell("<red>Your item cannot be damaged!");
-            return;
+            Utils.tell(user, "<red>You need to be holding an item in your hand.");
+            return 0;
         }
 
-        // We need arguments.
-        if (args.length == 0) {
-            returnTell("<red>Please provide the amount of damage to apply to your item.");
-            return;
-        }
-
-        // Check if we have can have durability.
-        if (stack.getType().getMaxDurability() == 0 && !meta.hasMaxDamage()) {
-            returnTell("<red>Your item doesn't have a custom max damage and doesn't have damage by default.");
-            return;
-        }
-
-        if (meta.isUnbreakable()) {
-            returnTell("<red>Your item is unbreakable and cannot be damaged!");
-            return;
-        }
-
-        // View the current item damage.
-        if (Arrays.stream(args).toList().contains("-view")) {
-            if (meta.hasMaxDamage()) {
-                tell("<primary>Your item's damage is currently <secondary>" + meta.getDamage() + "</secondary><gray>/" + meta.getMaxDamage() + " (<hover:show_text:'<primary>Default: <secondary>" + stack.getType().getMaxDurability() + "</secondary>'><i>custom max damage</i></hover>)</gray>.");
-            } else {
-                tell("<primary>Your item's damage is currently <secondary>" + meta.getDamage() + "</secondary><gray>/" + stack.getType().getMaxDurability() + "</gray>.");
-            }
-            return;
-        }
-
-        if (args.length == 1) {
-            // See if we want to repair.
-            if (args[0].equalsIgnoreCase("repair")) {
-                meta.setDamage(0);
-                stack.setItemMeta(meta);
-                tell("<primary>Your item has been repaired.");
-                return;
-            }
-
-            // Default to setting the damage.
-            final int damage = getNumber(0, "<yellow>" + args[0] + " <red>is not a valid integer.");
-            meta.setDamage(damage);
-            stack.setItemMeta(meta);
-            tell("<primary>Set the damage of your item to <secondary>" + damage + "</secondary><gray>/" + (meta.hasMaxDamage() ? meta.getMaxDamage() : stack.getType().getMaxDurability()) + "</gray>.");
-            return;
-        }
-
-        // Get the damage to be set.
-        final int damage = getNumber(1, "<yellow>" + args[1] + " <red>is not a valid integer.");
-
-        switch (args[0].toLowerCase()) {
-            case "add" -> {
-                // Adds the damage to the current damage.
-                meta.setDamage(damage + meta.getDamage());
-                tell("<primary>Added <secondary>" + damage + "</secondary> damage to your item.");
-            }
-            case "set" -> {
-                // Sets the damage.
-                meta.setDamage(damage);
-                tell("<primary>Set the damage of your item to <secondary>" + damage + "</secondary><gray>/" + (meta.hasMaxDamage() ? meta.getMaxDamage() : stack.getType().getMaxDurability()) + "</gray>.");
-            }
-            case "remove" -> {
-                // Removes the damage from the current damage.
-                meta.setDamage(meta.getDamage() - damage);
-                tell("<primary>Removed <secondary>" + damage + "</secondary> damage to your item.");
-            }
-        }
-
-        // Set the item's meta.
-        stack.setItemMeta(meta);
-    }
-
-    @Override
-    public List<String> getTabComplete(CommandSender sender, String[] args) {
-        if (testPermissionSilent(sender)) {
-            if (args.length == 1) {
-                return Stream.of("repair", "add", "set", "remove").filter((name) -> name.contains(args[0].toLowerCase(Locale.ROOT))).toList();
-            }
-
-            if (args.length == 2) {
-                if (!args[0].equalsIgnoreCase("repair") && sender instanceof Player player) {
-                    return Stream.of("10", "150", "200", player.getInventory().getItemInMainHand().getType().getMaxDurability() + "").filter((name) -> name.contains(args[0].toLowerCase(Locale.ROOT))).toList();
-                }
-            }
-
-        }
-
-        return super.getTabComplete(sender, args);
+        stack.setItemMeta(function.apply(meta, stack.getType().getMaxDurability()));
+        return 1;
     }
 }

@@ -1,78 +1,129 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
 import com.itsschatten.yggdrasil.StringUtil;
-import com.itsschatten.yggdrasil.commands.CommandBase;
-import com.itsschatten.yggdrasil.commands.PlayerSubCommand;
+import com.itsschatten.yggdrasil.Utils;
+import com.itsschatten.yggdrasil.commands.BrigadierCommand;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
+import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.stream.IntStream;
+import java.util.function.BiFunction;
 
-public class AmountSubCommand extends PlayerSubCommand {
-
-    /**
-     * Constructs the command.
-     *
-     * @param owningCommand The command that "owns" this sub command, used to register this sub command in tab complete.
-     */
-    public AmountSubCommand(@NotNull CommandBase owningCommand) {
-        super("amount", Collections.emptyList(), owningCommand);
-    }
+public class AmountSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
-    public Component descriptionComponent() {
-        return StringUtil.color("<primary>" + commandString() + " <secondary><amount></secondary>").hoverEvent(StringUtil.color("""
+    public @NotNull Component descriptionComponent() {
+        return StringUtil.color("<primary>/ie amount <secondary><amount></secondary>").hoverEvent(StringUtil.color("""
                 <primary>Set the amount of your item.
                 <gray>The amount is maxed to the item's default max stack size or custom max stack size.</gray>
                 \s
-                ◼ <secondary><amount><required></secondary> The amount to update the stack.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand(commandString() + " "));
+                ◼ <secondary><amount><required></secondary> The amount to update the stack.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand("/ie amount "));
     }
 
     @Override
-    protected void run(@NotNull Player user, String[] args) {
+    public LiteralArgumentBuilder<CommandSourceStack> command() {
+        return Commands.literal("amount")
+                .then(Commands.literal("max")
+                        .then(Commands.literal("-view")
+                                .executes(this::handleMaxView)
+                        )
+                        .then(Commands.literal("-clear")
+                                .executes(context -> updateMaxStackSize(context, (stack, meta) -> {
+                                    meta.setMaxStackSize(null);
+                                    Utils.tell(context.getSource(), "<primary>Reset your item's maximum stack size to <secondary>" + stack.getType().getMaxStackSize() + "</secondary>!");
+                                    return meta;
+                                }))
+                        )
+                        .then(Commands.argument("maximum", IntegerArgumentType.integer(1, 99))
+                                .executes(context -> updateMaxStackSize(context, (stack, meta) -> {
+                                    final int amount = IntegerArgumentType.getInteger(context, "maximum");
+
+                                    meta.setMaxStackSize(amount);
+                                    Utils.tell(context.getSource(), "<primary>Updated your item's maximum stack size to <secondary>" + amount + "</secondary>!");
+                                    return meta;
+                                }))
+                        )
+                )
+                .then(Commands.argument("amount", IntegerArgumentType.integer(1, 99))
+                        .executes(context -> {
+                            final Player user = (Player) context.getSource().getSender();
+                            // Get the item stack in the user's main hand.
+                            final ItemStack stack = user.getInventory().getItemInMainHand();
+                            if (stack.isEmpty()) {
+                                Utils.tell(user, "<red>You need to be holding an item in your hand.");
+                                return 0;
+                            }
+
+                            // Get the item's meta and check if it's null, it really shouldn't be but safety.
+                            final ItemMeta meta = stack.getItemMeta();
+                            if (meta == null) {
+                                Utils.tell(user, "<red>For some reason the item's meta is null!");
+                                return 0;
+                            }
+
+                            final int amount = IntegerArgumentType.getInteger(context, "amount");
+
+                            stack.setAmount(Math.min(amount, meta.hasMaxStackSize() ? meta.getMaxStackSize() : stack.getMaxStackSize()));
+                            Utils.tell(user, "<primary>Updated your item's stack size to <secondary>" + amount + "</secondary>!");
+
+                            return 1;
+                        })
+                );
+    }
+
+    private int handleMaxView(CommandContext<CommandSourceStack> context) {
+        final Player user = (Player) context.getSource().getSender();
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
         if (stack.isEmpty()) {
-            returnTell("<red>You need to be holding an item in your hand.");
-            return;
+            Utils.tell(user, "<red>You need to be holding an item in your hand.");
+            return 0;
         }
 
         // Get the item's meta and check if it's null, it really shouldn't be but safety.
         final ItemMeta meta = stack.getItemMeta();
         if (meta == null) {
-            returnTell("<red>For some reason the item's meta is null!");
-            return;
+            Utils.tell(user, "<red>For some reason the item's meta is null!");
+            return 0;
         }
 
-        if (args.length == 0) {
-            returnTell("<red>Please specify an amount!");
-            return;
+        if (meta.hasMaxStackSize()) {
+            Utils.tell(context.getSource(), "<primary>Your item's max stack size is custom!" +
+                    "\nMax stack size: <secondary>" + meta.getMaxStackSize() + "</secondary> <gray>(" + stack.getType().getMaxStackSize() + ")</gray>!");
+        } else {
+            Utils.tell(context.getSource(), "<primary>Your item's max stack size is vanilla." +
+                    "\nMax stack size: <secondary>" + stack.getType().getMaxStackSize() + "</secondary>!");
         }
-
-        // Get an amount.
-        final int amount = getNumber(0, "<yellow>" + args[0] + "<red> is not a number!");
-
-        stack.setAmount(Math.min(amount, meta.hasMaxStackSize() ? meta.getMaxStackSize() : stack.getMaxStackSize()));
-        tell("<primary>Updated your item's stack size to <secondary>" + amount + "</secondary>!");
+        return 1;
     }
 
-    @Override
-    public List<String> getTabComplete(CommandSender sender, String[] args) {
-        if (testPermissionSilent(sender)) {
-            if (args.length == 1) {
-                return IntStream.range(1, 64).mapToObj(Integer::toString).filter((name) -> name.contains(args[0].toLowerCase(Locale.ROOT))).toList();
-            }
+    private int updateMaxStackSize(final @NotNull CommandContext<CommandSourceStack> context, final BiFunction<ItemStack, ItemMeta, ItemMeta> function) {
+        final Player user = (Player) context.getSource().getSender();
+        // Get the item stack in the user's main hand.
+        final ItemStack stack = user.getInventory().getItemInMainHand();
+        if (stack.isEmpty()) {
+            Utils.tell(user, "<red>You need to be holding an item in your hand.");
+            return 0;
         }
 
-        return super.getTabComplete(sender, args);
+        // Get the item's meta and check if it's null, it really shouldn't be but safety.
+        final ItemMeta meta = stack.getItemMeta();
+        if (meta == null) {
+            Utils.tell(user, "<red>For some reason the item's meta is null!");
+            return 0;
+        }
+
+        stack.setItemMeta(function.apply(stack, meta));
+        return 1;
     }
+
 }

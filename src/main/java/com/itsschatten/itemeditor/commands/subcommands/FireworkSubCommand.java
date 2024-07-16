@@ -1,184 +1,364 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
-import com.google.common.collect.Lists;
+import com.itsschatten.itemeditor.commands.arguments.GenericEnumArgument;
 import com.itsschatten.itemeditor.menus.FireworkMenu;
 import com.itsschatten.itemeditor.menus.FireworkStarMenu;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.StringWrapUtils;
 import com.itsschatten.yggdrasil.Utils;
-import com.itsschatten.yggdrasil.commands.CommandBase;
-import com.itsschatten.yggdrasil.commands.PlayerSubCommand;
+import com.itsschatten.yggdrasil.commands.BrigadierCommand;
+import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
+import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.minecraft.commands.SharedSuggestionProvider;
 import org.bukkit.Color;
 import org.bukkit.DyeColor;
 import org.bukkit.FireworkEffect;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkEffectMeta;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 import java.util.stream.IntStream;
 
-public class FireworkSubCommand extends PlayerSubCommand {
-
-    /**
-     * Constructs the command.
-     *
-     * @param owningCommand The command that "owns" this sub command, used to register this sub command in tab complete.
-     */
-    public FireworkSubCommand(@NotNull CommandBase owningCommand) {
-        super("firework", List.of("fw"), owningCommand);
-    }
+public class FireworkSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
-    public Component descriptionComponent() {
-        return StringUtil.color("<primary>" + commandString() + " <secondary><menu|power|clear|remove></secondary>").hoverEvent(StringUtil.color("""
+    public @NotNull Component descriptionComponent() {
+        return StringUtil.color("<primary>/ie firework <secondary><menu|power|-clear|remove></secondary>").hoverEvent(StringUtil.color("""
                 <primary>Manipulate a firework or firework star via a GUI or command.
-                <gray><i>Tab complete is heavily recommended for messing with colors, shapes, and effects when using the command.</i></gray>
+                <gray><i>Supply '""' if you wish to not have an argument in that slot, this does not work for colors.</i></gray>
                 \s
                 ◼ <secondary>[menu]<optional></secondary> Opens the firework edit menu, this is the default if no args are provided.
                 ◼ <secondary><power><first></secondary> Set the power of a firework, fails if given a firework star.
                 ◼ <secondary><remove><first></secondary> Remove a specific effect on a firework or clears the effect on a firework star.
-                ◼ <secondary><clear><first></secondary> Clear all firework effects from a firework or firework star.
+                ◼ <secondary><-clear><first></secondary> Clear all firework effects from a firework or firework star.
                 ◼ <secondary><color:><first></secondary> Set the primary colors of the firework effect.
                 ◼ <secondary><fade:><first></secondary> Set the fade colors of the firework effect.
                 ◼ <secondary><shape:><first></secondary> Set the shape of the firework effect.
-                ◼ <secondary><effects:><first></secondary> Set the effects of the firework effect.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand(commandString() + " "));
+                ◼ <secondary><effects:><first></secondary> Set the effects of the firework effect.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand("/ie firework "));
     }
 
     @Override
-    protected void run(@NotNull Player user, String[] args) {
+    public LiteralArgumentBuilder<CommandSourceStack> command() {
+        return Commands.literal("firework")
+                .then(Commands.literal("power")
+                        .then(Commands.argument("power", IntegerArgumentType.integer(0, 4))
+                                .executes(context -> updateFireworkPower(context, IntegerArgumentType.getInteger(context, "power")))
+                        )
+                )
+                .then(Commands.literal("-clear")
+                        .executes(this::clearEffects)
+                )
+                .then(Commands.literal("remove")
+                        .then(Commands.argument("id", IntegerArgumentType.integer(0))
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(getEffectIds(context).stream().map(integer -> integer + "").toList(), builder))
+                                .executes(context -> removeEffect(context, IntegerArgumentType.getInteger(context, "id")))
+                        )
+                )
+                .then(Commands.argument("colors", StringArgumentType.string())
+                        .then(Commands.argument("fades", StringArgumentType.string())
+                                .then(Commands.argument("shape", GenericEnumArgument.generic(FireworkEffect.Type.class))
+                                        .then(Commands.argument("flicker", BoolArgumentType.bool())
+                                                .then(Commands.argument("trail", BoolArgumentType.bool())
+                                                        .executes(context -> {
+                                                            final String colorString = StringArgumentType.getString(context, "colors");
+                                                            final String fadesString = StringArgumentType.getString(context, "fades");
+                                                            final FireworkEffect.Type type = context.getArgument("shape", FireworkEffect.Type.class);
+
+                                                            final boolean flicker = BoolArgumentType.getBool(context, "flicker");
+                                                            final boolean trail = BoolArgumentType.getBool(context, "trail");
+
+                                                            final List<Color> colors = parseColors(context, colorString);
+                                                            final List<Color> fades = parseColors(context, fadesString);
+
+                                                            if (colors.isEmpty()) {
+                                                                Utils.tell(context.getSource(), "<red>You must provide one color.");
+                                                                return 0;
+                                                            }
+
+                                                            return addFireWorkEffect(context, colors, fades, type, flicker, trail);
+                                                        })
+                                                )
+                                                .executes(context -> {
+                                                    final String colorString = StringArgumentType.getString(context, "colors");
+                                                    final String fadesString = StringArgumentType.getString(context, "fades");
+                                                    final FireworkEffect.Type type = context.getArgument("shape", FireworkEffect.Type.class);
+
+                                                    final boolean flicker = BoolArgumentType.getBool(context, "flicker");
+
+                                                    final List<Color> colors = parseColors(context, colorString);
+                                                    final List<Color> fades = parseColors(context, fadesString);
+
+                                                    if (colors.isEmpty()) {
+                                                        Utils.tell(context.getSource(), "<red>You must provide one color.");
+                                                        return 0;
+                                                    }
+
+                                                    return addFireWorkEffect(context, colors, fades, type, flicker, false);
+                                                })
+                                        )
+                                        .executes(context -> {
+                                            final String colorString = StringArgumentType.getString(context, "colors");
+                                            final String fadesString = StringArgumentType.getString(context, "fades");
+                                            final FireworkEffect.Type type = context.getArgument("shape", FireworkEffect.Type.class);
+
+                                            final List<Color> colors = parseColors(context, colorString);
+                                            final List<Color> fades = parseColors(context, fadesString);
+
+                                            if (colors.isEmpty()) {
+                                                Utils.tell(context.getSource(), "<red>You must provide one color.");
+                                                return 0;
+                                            }
+
+                                            return addFireWorkEffect(context, colors, fades, type, false, false);
+                                        })
+                                )
+                                .suggests((context, builder) -> {
+                                    final List<String> options = new ArrayList<>();
+                                    final String prefix = builder.getRemainingLowerCase();
+
+                                    for (final DyeColor color : DyeColor.values()) {
+                                        options.add(prefix + color.name().toLowerCase() + ",");
+                                    }
+
+                                    return SharedSuggestionProvider.suggest(options, builder);
+                                })
+                                .executes(context -> {
+                                    final String colorString = StringArgumentType.getString(context, "colors");
+                                    final String fadesString = StringArgumentType.getString(context, "fades");
+
+                                    final List<Color> colors = parseColors(context, colorString);
+                                    final List<Color> fades = parseColors(context, fadesString);
+
+                                    if (colors.isEmpty()) {
+                                        Utils.tell(context.getSource(), "<red>You must provide one color.");
+                                        return 0;
+                                    }
+
+                                    return addFireWorkEffect(context, colors, fades, FireworkEffect.Type.BALL, false, false);
+                                })
+                        )
+                        .suggests((context, builder) -> {
+                            final List<String> options = new ArrayList<>();
+                            final String prefix = builder.getRemainingLowerCase();
+
+                            for (final DyeColor color : DyeColor.values()) {
+                                options.add(prefix + color.name().toLowerCase() + ",");
+                            }
+
+                            return SharedSuggestionProvider.suggest(options, builder);
+                        })
+                        .executes(context -> {
+                            final String colorString = StringArgumentType.getString(context, "colors");
+                            final List<Color> colors = parseColors(context, colorString);
+
+                            if (colors.isEmpty()) {
+                                Utils.tell(context.getSource(), "<red>You must provide one color.");
+                                return 0;
+                            }
+
+                            return addFireWorkEffect(context, colors, Collections.emptyList(), FireworkEffect.Type.BALL, false, false);
+                        })
+                )
+                .then(Commands.literal("menu")
+                        .executes(this::openMenu)
+                )
+                .executes(this::openMenu);
+    }
+
+    private @NotNull List<Color> parseColors(final CommandContext<CommandSourceStack> context, final @NotNull String colorString) {
+        final String[] split = colorString.replace("\"", "").replace(" ", "").split(",");
+        final List<Color> colors = new ArrayList<>();
+
+        // Loop the colors and add them to the list.
+        for (final String clr : split) {
+            try {
+                // Get the firework color from the dye.
+                colors.add(DyeColor.valueOf(clr.toUpperCase()).getFireworkColor());
+            } catch (IllegalArgumentException ignored) {
+                if (clr.startsWith("#") && clr.length() == 7 || clr.length() == 6) {
+                    // Get RGB.
+                    final Color color = Color.fromRGB(Integer.parseInt(clr.substring(1), 16));
+
+                    colors.add(color);
+                    continue;
+                }
+
+                Utils.tell(context.getSource(), "<gray>'" + clr + "' is not a valid color, must be a color name or a hex color string (#hexclr). It has been skipped.");
+            }
+        }
+
+        return colors;
+    }
+
+    private List<Integer> getEffectIds(@NotNull CommandContext<CommandSourceStack> context) {
+        final Player user = (Player) context.getSource().getSender();
+
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
         if (stack.isEmpty()) {
-            returnTell("<red>You need to be holding an item in your hand.");
-            return;
+            return Collections.emptyList();
         }
 
-        // Get the item's meta and check if it's null, it really shouldn't be but safety.
         if (!(stack.getItemMeta() instanceof final FireworkMeta meta)) {
+            if (stack.getItemMeta() instanceof FireworkEffectMeta) {
+                return List.of(0);
+            }
 
+            Utils.tell(user, "<red>You item is not a firework or firework star!");
+            return Collections.emptyList();
+        }
+
+        return IntStream.rangeClosed(0, meta.getEffectsSize() - 1).boxed().toList();
+    }
+
+    private int clearEffects(final @NotNull CommandContext<CommandSourceStack> context) {
+        final Player user = (Player) context.getSource().getSender();
+
+        // Get the item stack in the user's main hand.
+        final ItemStack stack = user.getInventory().getItemInMainHand();
+        if (stack.isEmpty()) {
+            Utils.tell(user, "<red>You need to be holding an item in your hand.");
+            return 0;
+        }
+
+        if (!(stack.getItemMeta() instanceof final FireworkMeta meta)) {
             if (stack.getItemMeta() instanceof final FireworkEffectMeta fireworkEffectMeta) {
-                // Default to opening the menu.
-                if (args.length == 0) {
-                    new FireworkStarMenu(stack, fireworkEffectMeta).displayTo(Utils.getManager().getMenuHolder(user));
-                    return;
-                }
-
-                switch (args[0].toLowerCase()) {
-                    // Opens the menu.
-                    case "menu" -> {
-                        new FireworkStarMenu(stack, fireworkEffectMeta).displayTo(Utils.getManager().getMenuHolder(user));
-                        return;
-                    }
-
-                    // Handle the power, we cannot set the power on a Firework star, so we ignore it.
-                    case "power" -> {
-                        tell("<red>You cannot set power on a firework star!");
-                        return;
-                    }
-
-                    // Removes the firework effect from the item.
-                    case "remove", "clear" -> {
-                        fireworkEffectMeta.setEffect(null);
-                        stack.setItemMeta(fireworkEffectMeta);
-                        tell("<primary>Removed the firework effect from your firework star!");
-                        return;
-                    }
-
-                    default -> {
-                        // Build a firework effect based on the args.
-                        final FireworkEffect effect = getEffect(args);
-                        // Return if null, error message(s) should've been sent.
-                        if (effect == null) return;
-
-                        // Set the effect and update the meta.
-                        fireworkEffectMeta.setEffect(effect);
-                        stack.setItemMeta(fireworkEffectMeta);
-                        tell("<primary>Set the firework effect to: <secondary><hover:show_text:'" + getHoverFromEffect(effect) + "'>" + getShortEffect(effect) + "</hover></secondary>.");
-                    }
-                }
-                return;
+                fireworkEffectMeta.setEffect(null);
+                stack.setItemMeta(fireworkEffectMeta);
+                Utils.tell(user, "<primary>Removed the firework effect from your firework star!");
+                return 1;
             }
 
-            returnTell("<red>Your item is not a firework!");
-            return;
+            Utils.tell(user, "<red>You item is not a firework or firework star!");
+            return 0;
         }
 
-        // We need arguments.
-        if (args.length == 0) {
-            new FireworkMenu(stack, meta).displayTo(Utils.getManager().getMenuHolder(user));
-            return;
-        }
-
-        switch (args[0].toLowerCase()) {
-            // Opens the menu.
-            case "menu" -> {
-                new FireworkMenu(stack, meta).displayTo(Utils.getManager().getMenuHolder(user));
-                return;
-            }
-
-            // Handle the power, we cannot set the power on a Firework star, so we ignore it.
-            case "power" -> {
-                if (args.length < 2) {
-                    returnTell("<red>Please provide the power you wish to apply.");
-                    return;
-                }
-                final int power = getNumber(1, "<yellow>" + args[1] + "</yellow><red> is not a valid number.");
-
-                meta.setPower(Math.max(0, Math.min(4, power)));
-                tell("<primary>Set the power of your firework to <secondary>" + power + "</secondary>.");
-            }
-
-            // Removes the firework effect from the item.
-            case "remove" -> {
-                // Ignore if we have no effects.
-                if (meta.getEffectsSize() == 0) {
-                    tell("<red>Your firework contains no effects!");
-                    return;
-                }
-
-                // Make sure we have an argument.
-                if (args.length < 2) {
-                    returnTell("<red>Please provide the location of the effect you wish to remove.");
-                    return;
-                }
-                final int effectId = getNumber(1, "<yellow>" + args[1] + "</yellow><red> is not a valid number.");
-
-                // Get the effect before we remove it.
-                final FireworkEffect effect = meta.getEffects().get(effectId);
-                meta.removeEffect(effectId);
-                tell("<primary>Removed the <secondary><hover:show_text:'" + getHoverFromEffect(effect) + "'>firework effect</hover></secondary> from your firework!\n<gray><i>Hover over firework effect to see the effect you removed!");
-            }
-
-            // Remove all firework effects.
-            case "clear" -> {
-                // Clear the fireworks.
-                meta.clearEffects();
-
-                tell("<primary>Cleared all effects from your firework!");
-            }
-
-            default -> {
-                // Build a firework effect based on the args.
-                final FireworkEffect effect = getEffect(args);
-                // Return if null, error message(s) should've been sent.
-                if (effect == null) return;
-
-                // Set the effect and update the meta.
-                meta.addEffect(effect);
-                tell("<primary>Add the firework effect: <secondary><hover:show_text:'" + getHoverFromEffect(effect) + "'>" + getShortEffect(effect) + "</hover></secondary>.");
-            }
-        }
-
+        meta.clearEffects();
         stack.setItemMeta(meta);
+
+        Utils.tell(user, "<primary>Cleared all effects from your firework!");
+        return 1;
+    }
+
+    private int removeEffect(final @NotNull CommandContext<CommandSourceStack> context, int effectLocation) {
+        final Player user = (Player) context.getSource().getSender();
+
+        // Get the item stack in the user's main hand.
+        final ItemStack stack = user.getInventory().getItemInMainHand();
+        if (stack.isEmpty()) {
+            Utils.tell(user, "<red>You need to be holding an item in your hand.");
+            return 0;
+        }
+        if (!(stack.getItemMeta() instanceof final FireworkMeta meta)) {
+            if (stack.getItemMeta() instanceof FireworkEffectMeta) {
+                return clearEffects(context);
+            }
+
+            Utils.tell(user, "<red>You item is not a firework!");
+            return 0;
+        }
+        final FireworkEffect effect = meta.getEffects().get(effectLocation);
+        meta.removeEffect(effectLocation);
+        stack.setItemMeta(meta);
+        Utils.tell(user, "<primary>Removed the <secondary><hover:show_text:'" + getHoverFromEffect(effect) + "'>firework effect</hover></secondary> from your firework!\n<gray><i>Hover over firework effect to see the effect you removed!");
+
+        return 1;
+    }
+
+    private int addFireWorkEffect(final @NotNull CommandContext<CommandSourceStack> context,
+                                  final List<Color> colors, final List<Color> fades,
+                                  final FireworkEffect.Type shape, final boolean flicker, final boolean trail) {
+        final Player user = (Player) context.getSource().getSender();
+
+        // Get the item stack in the user's main hand.
+        final ItemStack stack = user.getInventory().getItemInMainHand();
+        if (stack.isEmpty()) {
+            Utils.tell(user, "<red>You need to be holding an item in your hand.");
+            return 0;
+        }
+
+        final FireworkEffect effect = FireworkEffect.builder().withColor(colors).withFade(fades).with(shape).flicker(flicker).trail(trail).build();
+
+        if (!(stack.getItemMeta() instanceof final FireworkMeta meta)) {
+            if (stack.getItemMeta() instanceof final FireworkEffectMeta fireworkEffectMeta) {
+                fireworkEffectMeta.setEffect(effect);
+                stack.setItemMeta(fireworkEffectMeta);
+
+                Utils.tell(user, "<primary>Set the firework effect to: <secondary><hover:show_text:'" + getHoverFromEffect(effect) + "'>" + getShortEffect(effect) + "</hover></secondary>.");
+                return 1;
+            }
+
+            Utils.tell(user, "<red>You item is not a firework or firework star!");
+            return 0;
+        }
+
+        // Set the effect and update the meta.
+        meta.addEffect(effect);
+        stack.setItemMeta(meta);
+        Utils.tell(user, "<primary>Add the firework effect: <secondary><hover:show_text:'" + getHoverFromEffect(effect) + "'>" + getShortEffect(effect) + "</hover></secondary>.");
+
+        return 1;
+    }
+
+    private int updateFireworkPower(final @NotNull CommandContext<CommandSourceStack> context, final int power) {
+        final Player user = (Player) context.getSource().getSender();
+
+        // Get the item stack in the user's main hand.
+        final ItemStack stack = user.getInventory().getItemInMainHand();
+        if (stack.isEmpty()) {
+            Utils.tell(user, "<red>You need to be holding an item in your hand.");
+            return 0;
+        }
+
+        if (stack.getItemMeta() instanceof final FireworkMeta meta) {
+            meta.setPower(power);
+            stack.setItemMeta(meta);
+            Utils.tell(user, "<primary>Set the power of your firework to <secondary>" + power + "</secondary>.");
+            return 1;
+        } else {
+            Utils.tell(user, "<red>You item is not a firework!");
+            return 0;
+        }
+    }
+
+
+    private int openMenu(final @NotNull CommandContext<CommandSourceStack> context) {
+        final Player user = (Player) context.getSource().getSender();
+
+        // Get the item stack in the user's main hand.
+        final ItemStack stack = user.getInventory().getItemInMainHand();
+        if (stack.isEmpty()) {
+            Utils.tell(user, "<red>You need to be holding an item in your hand.");
+            return 0;
+        }
+
+        if (!(stack.getItemMeta() instanceof final FireworkMeta meta)) {
+            if (stack.getItemMeta() instanceof final FireworkEffectMeta fireworkEffectMeta) {
+                new FireworkStarMenu(stack, fireworkEffectMeta).displayTo(Utils.getManager().getMenuHolder(user));
+                return 1;
+            }
+
+            Utils.tell(user, "<red>You item is not a firework or firework star!");
+            return 0;
+        }
+
+        new FireworkMenu(stack, meta).displayTo(Utils.getManager().getMenuHolder(user));
+        return 1;
     }
 
     // Gets a short effect string.
@@ -249,232 +429,5 @@ public class FireworkSubCommand extends PlayerSubCommand {
                 .replace("{colors}", StringWrapUtils.wrap(colors, 35, "|"))
                 .replace("{fades}", StringWrapUtils.wrap(fades, 35, "|"))
                 ;
-    }
-
-    // Builds a firework effect from the provided arguments.
-    private @Nullable FireworkEffect getEffect(final @NotNull String[] args) {
-        // Build a list from the argument array.
-        final List<String> arguments = new ArrayList<>(Arrays.stream(args).toList());
-
-        // Storage list of main colors.
-        final List<Color> colorList = new ArrayList<>();
-        // Make sure we have the "color:" argument.
-        if (containsPartial(arguments, "color:")) {
-            final int index = getIndex(arguments, "color:");
-
-            // Shouldn't ever return true.
-            if (index == -1) {
-                returnTell("<red>Detected 'color:' but couldn't find it.");
-                return null;
-            }
-
-            // The full string, then split by commas.
-            final String colors = arguments.get(index).substring(6);
-            final String[] split = colors.split(",");
-
-            // Loop the colors and add them to the list.
-            for (final String clr : split) {
-                try {
-                    // Get the firework color from the dye.
-                    colorList.add(DyeColor.valueOf(clr.toUpperCase()).getFireworkColor());
-                } catch (IllegalArgumentException ignored) {
-                    if (clr.startsWith("#") && clr.length() == 7) {
-                        // Get RGB.
-                        final int red = Integer.valueOf(clr.substring(1, 3), 16);
-                        final int green = Integer.valueOf(clr.substring(3, 4), 16);
-                        final int blue = Integer.valueOf(clr.substring(5, 7), 16);
-                        final Color color = Color.fromRGB(red, green, blue);
-
-                        colorList.add(color);
-                        continue;
-                    }
-
-                    tell("<gray>'" + clr + "' is not a valid color, must be a color name or a hex color string (#hexclr).");
-                }
-            }
-        } else {
-            // We have to return because we require a color for firework effects.
-            returnTell("<red>You must set at least one color for your firework.");
-            return null;
-        }
-
-        // Make sure we have colors.
-        if (colorList.isEmpty()) {
-            returnTell("<red>Couldn't find any valid colors!");
-            return null;
-        }
-
-        // Storage list of fade colors.
-        final List<Color> fadeList = new ArrayList<>();
-        // Check if we have the "fade:" argument.
-        if (containsPartial(arguments, "fade:")) {
-            final int index = getIndex(arguments, "fade:");
-            // Shouldn't ever return true.
-            if (index == -1) {
-                returnTell("<red>Detected 'fade:' but couldn't find it.");
-                return null;
-            }
-
-            // The full string, then split by commas.
-            final String colors = arguments.get(index).substring(5);
-            final String[] split = colors.split(",");
-
-            // Loop the colors and add them to the list.
-            for (final String clr : split) {
-                try {
-                    // Get the firework color from the dye.
-                    fadeList.add(DyeColor.valueOf(clr.toUpperCase()).getFireworkColor());
-                } catch (IllegalArgumentException ignored) {
-                    if (clr.startsWith("#") && clr.length() == 7) {
-                        // Get RGB.
-                        final int red = Integer.valueOf(clr.substring(1, 3), 16);
-                        final int green = Integer.valueOf(clr.substring(3, 4), 16);
-                        final int blue = Integer.valueOf(clr.substring(5, 7), 16);
-                        final Color color = Color.fromRGB(red, green, blue);
-
-                        fadeList.add(color);
-                        continue;
-                    }
-
-                    tell("<gray>'" + clr + "' is not a valid color, must be a color name or a hex color string (#hexclr).");
-                }
-            }
-        }
-
-        // Defaults to ball.
-        FireworkEffect.Type shape = FireworkEffect.Type.BALL;
-        if (containsPartial(arguments, "shape:")) {
-            final int index = getIndex(arguments, "shape:");
-            // Shouldn't ever return true.
-            if (index == -1) {
-                returnTell("<red>Detected 'shape:' but couldn't find it.");
-                return null;
-            }
-
-            // Get the shape and set it.
-            final String shapeArg = arguments.get(index).substring(6);
-            try {
-                shape = FireworkEffect.Type.valueOf(shapeArg.toUpperCase());
-            } catch (IllegalArgumentException ignored) {
-                tell("<gray>'" + shapeArg + "' is not a valid shape, it has been defaulted back to small ball.");
-            }
-        } else {
-            tell("<gray>Because you didn't provide a shape it has been defaulted to ball.");
-        }
-
-        boolean flicker = false;
-        boolean trail = false;
-        if (containsPartial(arguments, "effect:")) {
-            final int index = getIndex(arguments, "effect:");
-            // Shouldn't ever return true.
-            if (index == -1) {
-                returnTell("<red>Detected 'effect:' but couldn't find it.");
-                return null;
-            }
-
-            // Get the shape and set it.
-            final String effects = arguments.get(index).substring(7).toLowerCase();
-            flicker = effects.contains("twinkle") || effects.contains("flicker");
-            trail = effects.contains("trail");
-        }
-
-        // The builder to use.
-        final FireworkEffect.Builder effect = FireworkEffect.builder();
-
-        // Set the colors, this is required.
-        effect.withColor(colorList);
-        // Set the shape, this is required.
-        effect.with(shape);
-
-        // Check if we have fade colors if we do add them.
-        if (!fadeList.isEmpty()) {
-            effect.withFade(fadeList);
-        }
-
-        // Set flicker and trail.
-        effect.flicker(flicker);
-        effect.trail(trail);
-        return effect.build();
-    }
-
-    // Utility method to check if a list contains a starts with a string.
-    private boolean containsPartial(final @NotNull List<String> strings, final String partial) {
-        return strings.stream().anyMatch(s -> s.startsWith(partial));
-    }
-
-    // Utility method to find an index based on a partial, this will only ever return the first iteration.
-    private int getIndex(final @NotNull List<String> list, final String search) {
-        return IntStream.range(0, list.size())
-                .filter(i -> list.get(i).contains(search))
-                .findFirst()
-                .orElse(-1);
-    }
-
-    @Override
-    public List<String> getTabComplete(CommandSender sender, String[] args) {
-        if (testPermissionSilent(sender)) {
-
-            // TODO: Turn this into my variants.
-
-            // Taken from Essential's Commandfirework.
-            // https://github.com/EssentialsX/Essentials/blob/2.x/Essentials/src/main/java/com/earth2me/essentials/commands/Commandfirework.java
-            // Note: this enforces an order of color fade shape effect, which the actual command doesn't have.  But that's fine.
-            if (args.length == 1) {
-                final List<String> options = Lists.newArrayList();
-                if (args[0].startsWith("color:")) {
-                    final String prefix;
-                    if (args[0].contains(",")) {
-                        prefix = args[0].substring(0, args[0].lastIndexOf(',') + 1);
-                    } else {
-                        prefix = "color:";
-                    }
-                    for (final DyeColor color : DyeColor.values()) {
-                        options.add(prefix + color.name().toLowerCase() + ",");
-                    }
-                    return options;
-                }
-                options.add("clear");
-                options.add("power");
-                options.add("color:");
-                options.add("remove");
-                options.add("menu");
-                return options;
-            } else if (args.length == 2) {
-                if (args[0].equals("power") && (sender instanceof Player player) && player.getInventory().getItemInMainHand().getItemMeta() instanceof FireworkMeta) {
-                    return Lists.newArrayList("0", "1", "2", "3", "4");
-                } else if (args[0].equalsIgnoreCase("remove") && (sender instanceof Player player) && player.getInventory().getItemInMainHand().getItemMeta() instanceof FireworkMeta meta) {
-                    if (meta.getEffects().size() > 1) {
-                        return IntStream.rangeClosed(0, meta.getEffectsSize() - 1).mapToObj(Integer::toString).toList();
-                    } else {
-                        return List.of("0");
-                    }
-                } else if (args[0].startsWith("color:")) {
-                    final List<String> options = Lists.newArrayList();
-                    if (!args[1].startsWith("fade:")) {
-                        args[1] = "fade:";
-                    }
-                    final String prefix;
-                    if (args[1].contains(",")) {
-                        prefix = args[1].substring(0, args[1].lastIndexOf(',') + 1);
-                    } else {
-                        prefix = "fade:";
-                    }
-                    for (final DyeColor color : DyeColor.values()) {
-                        options.add(prefix + color.name().toLowerCase() + ",");
-                    }
-                    return options;
-                } else {
-                    return Collections.emptyList();
-                }
-            } else if (args.length == 3 && args[0].startsWith("color:")) {
-                return Lists.newArrayList("shape:star", "shape:ball", "shape:large", "shape:creeper", "shape:burst");
-            } else if (args.length == 4 && args[0].startsWith("color:")) {
-                return Lists.newArrayList("effect:trail", "effect:twinkle", "effect:trail,twinkle", "effect:twinkle,trail");
-            } else {
-                return Collections.emptyList();
-            }
-        }
-
-        return super.getTabComplete(sender, args);
     }
 }

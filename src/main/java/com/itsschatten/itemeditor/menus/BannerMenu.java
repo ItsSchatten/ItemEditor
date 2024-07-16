@@ -149,7 +149,7 @@ public class BannerMenu extends PagedMenu<PatternRecord> implements Animated {
     }
 
     // Get the placeable positions for the page items.
-    // In this menu we allow all but the button row.
+    // In this menu, we allow all but the bottom row.
     @Override
     public List<InventoryPosition> getPlaceablePositions() {
         final List<InventoryPosition> positions = new ArrayList<>();

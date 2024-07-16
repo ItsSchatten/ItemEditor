@@ -1,92 +1,96 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
 import com.itsschatten.yggdrasil.StringUtil;
-import com.itsschatten.yggdrasil.commands.CommandBase;
-import com.itsschatten.yggdrasil.commands.PlayerSubCommand;
+import com.itsschatten.yggdrasil.Utils;
+import com.itsschatten.yggdrasil.commands.BrigadierCommand;
+import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
+import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
-import java.util.Locale;
-import java.util.stream.Stream;
+import java.util.function.Function;
 
-public class FireResistantSubCommand extends PlayerSubCommand {
-
-    /**
-     * Constructs the command.
-     *
-     * @param owningCommand The command that "owns" this sub command, used to register this sub command in tab complete.
-     */
-    public FireResistantSubCommand(@NotNull CommandBase owningCommand) {
-        super("fireresistant", List.of("fireresist"), owningCommand);
-    }
+public class FireResistantSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
-    public Component descriptionComponent() {
-        return StringUtil.color("<primary>" + commandString() + " <secondary><true|false|yes|no></secondary>").hoverEvent(StringUtil.color("""
+    public @NotNull Component descriptionComponent() {
+        return StringUtil.color("<primary>/ie fireresistant <secondary><true|false></secondary>").hoverEvent(StringUtil.color("""
                 <primary>Set whether your item is fire resistant or not.
                 \s
-                ◼ <secondary><true|false|yes|no><optional></secondary> Set whether your item will burn in lava or fire.
-                ◼ <secondary>[-view]<optional></secondary> View the item's current fire resistance status.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand(commandString() + " "));
+                ◼ <secondary><true|false><optional></secondary> Set whether your item will burn in lava or fire.
+                ◼ <secondary>[-view]<optional></secondary> View the item's current fire resistance status.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand("/ie fireresistant "));
     }
 
     @Override
-    protected void run(@NotNull Player user, String[] args) {
+    public LiteralArgumentBuilder<CommandSourceStack> command() {
+        return Commands.literal("fireresistant")
+                .then(Commands.argument("value", BoolArgumentType.bool())
+                        .executes(context -> updateFireResistance(context, meta -> {
+                            final boolean value = BoolArgumentType.getBool(context, "value");
+
+                            // Set it the value.
+                            meta.setFireResistant(value);
+                            Utils.tell(context.getSource(), "<primary>Your item is <secondary>" + (meta.isFireResistant() ? "now" : "no longer") + "</secondary> fire resistant!");
+                            return meta;
+                        }))
+                )
+                .then(Commands.literal("-view")
+                        .executes(this::handleView)
+                )
+                .executes(context -> updateFireResistance(context, meta -> {
+                    meta.setFireResistant(!meta.isFireResistant());
+                    Utils.tell(context.getSource(), "<primary>Your item is <secondary>" + (meta.isFireResistant() ? "now" : "no longer") + "</secondary> fire resistant!");
+                    return meta;
+                }));
+    }
+
+    private int updateFireResistance(final @NotNull CommandContext<CommandSourceStack> context, final Function<ItemMeta, ItemMeta> function) {
+        final Player user = (Player) context.getSource().getSender();
+
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
         if (stack.isEmpty()) {
-            returnTell("<red>You need to be holding an item in your hand.");
-            return;
+            Utils.tell(user, "<red>You need to be holding an item in your hand.");
+            return 0;
         }
 
         // Get the item's meta and check if it's null, it really shouldn't be but safety.
         final ItemMeta meta = stack.getItemMeta();
         if (meta == null) {
-            returnTell("<red>For some reason the item's meta is null!");
-            return;
+            Utils.tell(user, "<red>For some reason the item's meta is null!");
+            return 0;
         }
 
-        // Toggle fire resistance.
-        if (args.length == 0) {
-            meta.setFireResistant(!meta.isFireResistant());
-            stack.setItemMeta(meta);
-            tell("<primary>Your item is <secondary>" + (meta.isFireResistant() ? "now" : "no longer") + "</secondary> fire resistant!");
-            return;
-        }
-
-        // View the current fire resistance.
-        if (args[0].equalsIgnoreCase("-view")) {
-            tell("<primary>Your item is <secondary>currently" + (meta.isFireResistant() ? "" : " not") + "</secondary> fire resistant!");
-            return;
-        }
-
-        final boolean value = Boolean.parseBoolean(args[0]) || args[0].equalsIgnoreCase("yes");
-        // No change required.
-        if (meta.isFireResistant() == value) {
-            tell("<primary>Your item is <secondary>already" + (meta.isFireResistant() ? "" : " not") + "</secondary> fire resistant!");
-            return;
-        }
-
-        // Set it the value.
-        meta.setFireResistant(value);
-        stack.setItemMeta(meta);
-        tell("<primary>Your item is <secondary>" + (meta.isFireResistant() ? "now" : "no longer") + "</secondary> fire resistant!");
+        stack.setItemMeta(function.apply(meta));
+        return 1;
     }
 
-    @Override
-    public List<String> getTabComplete(CommandSender sender, String[] args) {
-        if (testPermissionSilent(sender)) {
-            if (args.length == 1) {
-                return Stream.of("true", "false", "yes", "no", "-view").filter((name) -> name.contains(args[0].toLowerCase(Locale.ROOT))).toList();
-            }
+    private int handleView(final @NotNull CommandContext<CommandSourceStack> context) {
+        final Player user = (Player) context.getSource().getSender();
+
+        // Get the item stack in the user's main hand.
+        final ItemStack stack = user.getInventory().getItemInMainHand();
+        if (stack.isEmpty()) {
+            Utils.tell(user, "<red>You need to be holding an item in your hand.");
+            return 0;
         }
 
-        return super.getTabComplete(sender, args);
+        // Get the item's meta and check if it's null, it really shouldn't be but safety.
+        final ItemMeta meta = stack.getItemMeta();
+        if (meta == null) {
+            Utils.tell(user, "<red>For some reason the item's meta is null!");
+            return 0;
+        }
+
+        Utils.tell(user, "<primary>Your item is <secondary>currently" + (meta.isFireResistant() ? "" : " not") + "</secondary> fire resistant!");
+        return 1;
     }
 }

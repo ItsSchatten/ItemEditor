@@ -1,0 +1,7 @@
+version: ${version}
+main: com.itsschatten.itemeditor.ItemEditorPlugin
+authors: [ ItsSchatten ]
+description: "Another item editor plugin."
+bootstrapper: com.itsschatten.itemeditor.ItemEditorBootstrap
+api-version: "1.21"
+name: "ItemEditor"

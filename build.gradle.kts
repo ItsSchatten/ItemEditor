@@ -22,8 +22,12 @@ ext {
 group = "com.itsschatten"
 version = project.property("version")!!
 java.sourceCompatibility = JavaVersion.VERSION_21
+paperweight.reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.MOJANG_PRODUCTION
 
 repositories {
+    mavenCentral()
+    mavenLocal()
+
     // PaperMC.
     maven("https://repo.papermc.io/repository/maven-public/")
 
@@ -31,43 +35,41 @@ repositories {
     maven {
         url = uri("https://repo.extendedclip.com/content/repositories/placeholderapi/")
     }
-
-    mavenCentral()
-    mavenLocal()
 }
 
 dependencies {
-    paperweight.paperDevBundle("1.20.6-R0.1-SNAPSHOT")
+    paperweight.paperDevBundle("1.21-R0.1-SNAPSHOT")
 
-    implementation("com.itsschatten:Yggdrasil-Paper:2.0.4") {
+    implementation("com.itsschatten:Yggdrasil-Paper:2.0.5") {
         isChanging = true
     }
 
-    compileOnly("org.projectlombok:lombok:1.18.32")
-    annotationProcessor("org.projectlombok:lombok:1.18.32")
+    compileOnly("org.projectlombok:lombok:1.18.34")
+    annotationProcessor("org.projectlombok:lombok:1.18.34")
 
     testImplementation(platform("org.junit:junit-bom:5.11.0-M1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 }
 
 tasks {
+
     assemble {
         dependsOn(shadowJar)
     }
 
-    reobfJar {
+    shadowJar {
         if (ext.get("isDev") as Boolean) {
+            archiveClassifier.set("dev")
             if (project.property("dev-path").toString().isNotBlank()) {
-                outputJar.set(file(System.getProperty("user.home") + File.separator + project.property("dev-path") + File.separator + project.name + "-dev-build.jar"))
+                destinationDirectory.set(file(System.getProperty("user.home") + File.separator + project.property("dev-path")))
             }
         } else {
+            archiveClassifier.set("")
             if (project.property("build-path").toString().isNotBlank()) {
-                outputJar.set(file(System.getProperty("user.home") + File.separator + project.property("build-path") + File.separator + project.name + "-" + project.version + ".jar"))
+                destinationDirectory.set(file(System.getProperty("user.home") + File.separator + project.property("build-path")))
             }
         }
-
     }
-
     compileJava {
         options.encoding = "UTF-8"
     }
@@ -75,7 +77,7 @@ tasks {
     processResources {
         filteringCharset = "UTF-8"
 
-        filesMatching("plugin.yml") {
+        filesMatching("*plugin.yml") {
             expand("version" to project.property("version") as String)
         }
     }
