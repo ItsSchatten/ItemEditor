@@ -2,6 +2,7 @@ package com.itsschatten.itemeditor.commands.subcommands;
 
 import com.itsschatten.itemeditor.commands.arguments.ColorArgument;
 import com.itsschatten.itemeditor.commands.arguments.GenericEnumArgument;
+import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
@@ -9,7 +10,6 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.Bukkit;
@@ -18,12 +18,13 @@ import org.bukkit.DyeColor;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
+import org.bukkit.inventory.meta.MapMeta;
 import org.bukkit.inventory.meta.PotionMeta;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
 
-public class ColorSubCommand extends BrigadierCommand {
+public final class ColorSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
@@ -41,25 +42,25 @@ public class ColorSubCommand extends BrigadierCommand {
 
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
-        return Commands.literal("color")
-                .then(Commands.argument("red", IntegerArgumentType.integer(0))
-                        .then(Commands.argument("green", IntegerArgumentType.integer(0, 255))
-                                .then(Commands.argument("blue", IntegerArgumentType.integer(0, 255))
-                                        .executes(context -> handleColor(context, Color.fromRGB(Math.min(IntegerArgumentType.getInteger(context, "red"), 255), IntegerArgumentType.getInteger(context, "green"), IntegerArgumentType.getInteger(context, "blue"))))
+        return literal("color")
+                .then(argument("red", IntegerArgumentType.integer(0))
+                        .then(argument("green", IntegerArgumentType.integer(0, 255))
+                                .then(argument("blue", IntegerArgumentType.integer(0, 255))
+                                        .executes(context -> handleColor(context, Color.fromRGB(Math.min(IntegerArgumentType.getInteger(context, "red"), 255), Math.min(IntegerArgumentType.getInteger(context, "green"), 255), Math.min(IntegerArgumentType.getInteger(context, "blue"), 255))))
                                 )
                         )
                         .executes(context -> handleColor(context, Color.fromRGB(IntegerArgumentType.getInteger(context, "red"))))
                 )
-                .then(Commands.argument("hex", ColorArgument.color())
+                .then(argument("hex", ColorArgument.color())
                         .executes(context -> handleColor(context, context.getArgument("hex", Color.class)))
                 )
-                .then(Commands.argument("color", GenericEnumArgument.generic(DyeColor.class))
+                .then(argument("color", GenericEnumArgument.generic(DyeColor.class))
                         .executes(context -> handleColor(context, context.getArgument("color", DyeColor.class).getColor()))
                 )
-                .then(Commands.literal("-view")
+                .then(literal("-view")
                         .executes(this::handleView)
                 )
-                .then(Commands.literal("-clear")
+                .then(literal("-clear")
                         .executes(this::handleReset)
                 );
     }
@@ -69,12 +70,23 @@ public class ColorSubCommand extends BrigadierCommand {
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }
 
         switch (stack.getItemMeta()) {
+            case final MapMeta meta -> {
+                // Check if the color is equal to the default.
+                if (!meta.hasColor()) {
+                    Utils.tell(user, "<primary>Your item's color is currently <secondary>default</secondary>.");
+                } else {
+                    // Check if we have a DyeColor used.
+                    final DyeColor color = DyeColor.getByColor(Objects.requireNonNull(meta.getColor()));
+                    sendViewMessage(user, color, meta.getColor());
+                }
+                return 1;
+            }
             case final LeatherArmorMeta meta -> {
                 // Check if the color is equal to the default.
                 if (meta.getColor().equals(Bukkit.getItemFactory().getDefaultLeatherColor())) {
@@ -112,12 +124,19 @@ public class ColorSubCommand extends BrigadierCommand {
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }
 
         switch (stack.getItemMeta()) {
+            case final MapMeta meta -> {
+                meta.setColor(null);
+                stack.setItemMeta(meta);
+
+                Utils.tell(user, "<primary>Your item's color has been reset to <secondary>default</secondary>.");
+                return 1;
+            }
             case final LeatherArmorMeta meta -> {
                 meta.setColor(null);
                 stack.setItemMeta(meta);
@@ -146,12 +165,26 @@ public class ColorSubCommand extends BrigadierCommand {
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }
 
         switch (stack.getItemMeta()) {
+            case final MapMeta meta -> {
+                // Set the color and update the meta.
+                meta.setColor(color);
+                stack.setItemMeta(meta);
+
+                // Get the dye color if applicable.
+                final DyeColor dyeColor = DyeColor.getByColor(color);
+                if (dyeColor == null) {
+                    Utils.tell(user, "<primary>Your item's color is now <c:#" + Integer.toHexString(color.asRGB()) + ">" + Integer.toHexString(color.asRGB()) + "</c>.");
+                } else {
+                    Utils.tell(user, "<primary>Your item's color is now <c:#" + Integer.toHexString(color.asRGB()) + ">" + dyeColor.name().toLowerCase().replace("_", " ") + "</c>.");
+                }
+                return 1;
+            }
             case final LeatherArmorMeta meta -> {
                 // Set the color and update the meta.
                 meta.setColor(color);

@@ -18,7 +18,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 @SuppressWarnings("UnstableApiUsage")
-public class EquipmentSlotArgument implements CustomArgumentType.Converted<EquipmentSlotGroup, String> {
+public final class EquipmentSlotArgument implements CustomArgumentType.Converted<EquipmentSlotGroup, String> {
     private final List<String> VALUES = List.of("any", "armor", "body", "chest", "feet", "hand", "head", "legs", "mainhand", "offhand");
 
     @Override
@@ -26,7 +26,7 @@ public class EquipmentSlotArgument implements CustomArgumentType.Converted<Equip
         try {
             return Objects.requireNonNull(EquipmentSlotGroup.getByName(nativeType));
         } catch (NullPointerException e) {
-            throw new SimpleCommandExceptionType(Component.literal("Couldn't find an equipment slot with the name " + nativeType)).create();
+            throw new SimpleCommandExceptionType(Component.literal("Couldn't find an equipment slot with the name '" + nativeType + "'.")).create();
         }
     }
 

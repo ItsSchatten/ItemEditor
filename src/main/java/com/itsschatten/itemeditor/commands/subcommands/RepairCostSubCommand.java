@@ -1,5 +1,6 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
+import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
@@ -7,7 +8,6 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.entity.Player;
@@ -15,7 +15,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Repairable;
 import org.jetbrains.annotations.NotNull;
 
-public class RepairCostSubCommand extends BrigadierCommand {
+public final class RepairCostSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
@@ -29,14 +29,14 @@ public class RepairCostSubCommand extends BrigadierCommand {
 
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
-        return Commands.literal("repaircost")
-                .then(Commands.argument("cost", IntegerArgumentType.integer(0))
+        return literal("repaircost")
+                .then(argument("cost", IntegerArgumentType.integer(0))
                         .executes(context -> {
                             final Player user = (Player) context.getSource().getSender();
 
                             // Get the item stack in the user's main hand.
                             final ItemStack stack = user.getInventory().getItemInMainHand();
-                            if (stack.isEmpty()) {
+                            if (ItemValidator.isInvalid(stack)) {
                                 Utils.tell(user, "<red>You need to be holding an item in your hand.");
                                 return 0;
                             }
@@ -55,7 +55,7 @@ public class RepairCostSubCommand extends BrigadierCommand {
                             return 1;
                         })
                 )
-                .then(Commands.literal("-view")
+                .then(literal("-view")
                         .executes(this::handleView)
                 );
     }
@@ -65,7 +65,7 @@ public class RepairCostSubCommand extends BrigadierCommand {
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }

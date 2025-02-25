@@ -1,13 +1,16 @@
 package com.itsschatten.itemeditor.menus;
 
+import com.itsschatten.yggdrasil.items.ItemCreator;
+import com.itsschatten.yggdrasil.items.ItemOptions;
+import com.itsschatten.yggdrasil.items.UtilityItems;
 import com.itsschatten.yggdrasil.menus.Menu;
 import com.itsschatten.yggdrasil.menus.buttons.AnimatedButton;
 import com.itsschatten.yggdrasil.menus.buttons.Button;
 import com.itsschatten.yggdrasil.menus.buttons.DynamicButton;
+import com.itsschatten.yggdrasil.menus.buttons.premade.InfoButton;
 import com.itsschatten.yggdrasil.menus.types.StandardMenu;
 import com.itsschatten.yggdrasil.menus.utils.IMenuHolder;
 import com.itsschatten.yggdrasil.menus.utils.InventoryPosition;
-import com.itsschatten.yggdrasil.menus.utils.ItemCreator;
 import org.apache.commons.lang.WordUtils;
 import org.bukkit.Color;
 import org.bukkit.DyeColor;
@@ -18,16 +21,14 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkEffectMeta;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Menu responsible for editing a single FireworkEffect on a firework star.
  */
-public class FireworkStarMenu extends StandardMenu {
+public final class FireworkStarMenu extends StandardMenu {
 
     // A large part of this class (if not most of it) is a copy of FireWorkEffectMenu.
 
@@ -96,17 +97,16 @@ public class FireworkStarMenu extends StandardMenu {
     // Set the information for the Information item.
     @Contract(value = " -> new", pure = true)
     @Override
-    public final String @NotNull [] getInfo() {
-        return new String[]{
+    public List<String> getInfo() {
+        return List.of(
                 "<red>To add custom hex colors use the command line!",
-                "<gray>colors:#abcdef"
-        };
+                "<gray>#abcdef"
+        );
     }
 
-    // Updates the information button position to after the dye colors.
     @Override
-    protected InventoryPosition getInfoButtonPosition() {
-        return InventoryPosition.of(1, 8);
+    public @Nullable InfoButton getInfoButton() {
+        return Objects.requireNonNull(super.getInfoButton()).toBuilder().position(InventoryPosition.of(1, 8)).build();
     }
 
     // Registers buttons for this menu.
@@ -119,54 +119,12 @@ public class FireworkStarMenu extends StandardMenu {
             registerButtons(colorButton);
         }
 
-        // This is an animated button, it updates after 1 second.
-        // Clicking this button rewards the player with the created firework star.
-        final Button starButton = new AnimatedButton() {
-            @Override
-            public long getUpdateTime() {
-                return 20L;
-            }
-
-            @Override
-            public ItemCreator createItem() {
-                final ItemStack star = new ItemStack(Material.FIREWORK_STAR);
-                final FireworkEffectMeta fwMeta = (FireworkEffectMeta) star.getItemMeta();
-                if (!colors.isEmpty())
-                    fwMeta.setEffect(FireworkEffect.builder().flicker(flicker).trail(trail).with(type).withColor(colors).withFade(fades).build());
-                star.setItemMeta(fwMeta);
-
-                return ItemCreator.of(star).name("<primary>Created Firework Star").lore(List.of("<yellow>Click <gray>to get a copy of this firework star.")).build();
-            }
-
-            @Override
-            public void onClicked(@NotNull IMenuHolder user, Menu menu, ClickType click) {
-                // We need colors to create the firework star, say so.
-                if (colors.isEmpty()) {
-                    user.tell("<red>You need to add at least one color to get this firework star!");
-                    return;
-                }
-
-                final ItemStack star = new ItemStack(Material.FIREWORK_STAR);
-                final FireworkEffectMeta fwMeta = (FireworkEffectMeta) star.getItemMeta();
-                fwMeta.setEffect(FireworkEffect.builder().flicker(flicker).trail(trail).with(type).withColor(colors).withFade(fades).build());
-                star.setItemMeta(fwMeta);
-
-                user.getBase().getInventory().addItem(star);
-            }
-
-            @Contract(" -> new")
-            @Override
-            public @NotNull InventoryPosition getPosition() {
-                return InventoryPosition.of(4, 4);
-            }
-        };
-
         // The shape of the firework effect.
         // This is a dynamic button, this button. It will be updated 1 second after clicking it.
         final Button typeButton = new DynamicButton() {
             // Different method name, but effectively does what onClick does.
             @Override
-            public void whenClicked(IMenuHolder user, Menu menu, @NotNull ClickType click) {
+            public void onClicked(IMenuHolder user, Menu menu, @NotNull ClickType click) {
                 if (click.isRightClick()) {
                     // Go down the enum until 0.
                     type = FireworkEffect.Type.values()[Math.max(0, type.ordinal() - 1)];
@@ -212,14 +170,14 @@ public class FireworkStarMenu extends StandardMenu {
         // This is a dynamic button, this button. It will be updated 1 second after clicking it.
         final Button twinkleButton = new DynamicButton() {
             @Override
-            public void whenClicked(IMenuHolder user, Menu menu, @NotNull ClickType click) {
+            public void onClicked(IMenuHolder user, Menu menu, @NotNull ClickType click) {
                 // Toggle the flicker value.
                 flicker = !flicker;
             }
 
             @Override
             public ItemCreator updateStack() {
-                return ItemCreator.of(Material.GLOWSTONE_DUST).name("<primary>Twinkle: <secondary>" + flicker).glow(flicker).build();
+                return ItemCreator.of(Material.GLOWSTONE_DUST).name("<primary>Twinkle: <secondary>" + flicker).options(ItemOptions.builder().glow(flicker).build()).build();
             }
 
             @Override
@@ -238,14 +196,14 @@ public class FireworkStarMenu extends StandardMenu {
         // This is a dynamic button, this button. It will be updated 1 second after clicking it.
         final Button trailButton = new DynamicButton() {
             @Override
-            public void whenClicked(IMenuHolder user, Menu menu, @NotNull ClickType click) {
+            public void onClicked(IMenuHolder user, Menu menu, @NotNull ClickType click) {
                 // Toggle the trail value.
                 trail = !trail;
             }
 
             @Override
             public ItemCreator updateStack() {
-                return ItemCreator.of(Material.DIAMOND).name("<primary>Trail: <secondary>" + trail).glow(trail).build();
+                return ItemCreator.of(Material.DIAMOND).name("<primary>Trail: <secondary>" + trail).options(ItemOptions.builder().glow(trail).build()).build();
             }
 
             @Override
@@ -260,7 +218,49 @@ public class FireworkStarMenu extends StandardMenu {
             }
         };
 
-        registerButtons(typeButton, twinkleButton, trailButton, starButton);
+        // Register our buttons to the menu, so they function and are automatically set in the menu.
+        registerButtons(typeButton, twinkleButton, trailButton);
+
+
+        // This is an animated button, it updates after 1 second.
+        // Clicking this button rewards the player with the created firework star.
+        final Button starButton = new AnimatedButton() {
+
+            @Override
+            public ItemCreator createItem() {
+                final ItemStack star = new ItemStack(Material.FIREWORK_STAR);
+                final FireworkEffectMeta fwMeta = (FireworkEffectMeta) star.getItemMeta();
+                if (!colors.isEmpty())
+                    fwMeta.setEffect(FireworkEffect.builder().flicker(flicker).trail(trail).with(type).withColor(colors).withFade(fades).build());
+                star.setItemMeta(fwMeta);
+
+                return ItemCreator.of(star).name("<primary>Created Firework Star").lore(List.of("<yellow>Click <gray>to get a copy of this firework star.")).build();
+            }
+
+            @Override
+            public void onClicked(@NotNull IMenuHolder user, Menu menu, ClickType click) {
+                // We need colors to create the firework star, say so.
+                if (colors.isEmpty()) {
+                    user.tell("<red>You need to add at least one color to get this firework star!");
+                    return;
+                }
+
+                final ItemStack star = new ItemStack(Material.FIREWORK_STAR);
+                final FireworkEffectMeta fwMeta = (FireworkEffectMeta) star.getItemMeta();
+                fwMeta.setEffect(FireworkEffect.builder().flicker(flicker).trail(trail).with(type).withColor(colors).withFade(fades).build());
+                star.setItemMeta(fwMeta);
+
+                user.getBase().getInventory().addItem(star);
+            }
+
+            @Contract(" -> new")
+            @Override
+            public @NotNull InventoryPosition getPosition() {
+                return InventoryPosition.of(4, 4);
+            }
+        };
+
+        registerButtons(starButton);
     }
 
     // Utility method to quickly create a DyeColor button from an integer value, usually the ordinal from the DyeColor enum.
@@ -276,7 +276,7 @@ public class FireworkStarMenu extends StandardMenu {
             }
 
             @Override
-            public void whenClicked(IMenuHolder user, Menu menu, @NotNull ClickType click) {
+            public void onClicked(IMenuHolder user, Menu menu, @NotNull ClickType click) {
                 // Check if our click is a right click.
                 if (click.isRightClick()) {
                     // Check if we are modifying it with a shift.
@@ -320,7 +320,7 @@ public class FireworkStarMenu extends StandardMenu {
                 return ItemCreator.of(Material.matchMaterial(color.name() + "_DYE"))
                         .name("<#" + Integer.toHexString(color.getColor().asRGB()) + ">" + WordUtils.capitalizeFully(color.name().replace("_", " ")))
                         .lore(lore)
-                        .glow(colors.contains(color.getFireworkColor())).build();
+                        .options(ItemOptions.builder().glow(colors.contains(color.getFireworkColor())).build()).build();
             }
 
             @Contract(" -> new")
@@ -335,7 +335,7 @@ public class FireworkStarMenu extends StandardMenu {
     // Draws non-functional items to the menu.
     @Override
     public void drawExtra() {
-        setRow(2, ItemCreator.makeFillerItem(Material.GRAY_STAINED_GLASS_PANE));
-        setRow(4, ItemCreator.makeFillerItem(Material.GRAY_STAINED_GLASS_PANE));
+        setRow(2, UtilityItems.makeFiller(Material.GRAY_STAINED_GLASS_PANE));
+        setRow(4, UtilityItems.makeFiller(Material.GRAY_STAINED_GLASS_PANE));
     }
 }

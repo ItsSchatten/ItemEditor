@@ -1,12 +1,12 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
+import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes;
 import io.papermc.paper.registry.RegistryKey;
 import net.kyori.adventure.text.Component;
@@ -19,9 +19,9 @@ import org.bukkit.inventory.meta.MusicInstrumentMeta;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
-public class GoatHornSubCommand extends BrigadierCommand {
+public final class GoatHornSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
@@ -36,18 +36,18 @@ public class GoatHornSubCommand extends BrigadierCommand {
 
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
-        return Commands.literal("horn")
-                .then(Commands.literal("-view")
+        return literal("horn")
+                .then(literal("-view")
                         .executes(this::handleView)
                 )
-                .then(Commands.literal("-clear")
+                .then(literal("-clear")
                         .executes(context -> updateInstrument(context, (meta) -> {
                             meta.setInstrument(null);
                             Utils.tell(context.getSource(), "<primary>Cleared the instrument of your goat horn.");
                             return meta;
                         }))
                 )
-                .then(Commands.argument("instrument", ArgumentTypes.resource(RegistryKey.INSTRUMENT))
+                .then(argument("instrument", ArgumentTypes.resource(RegistryKey.INSTRUMENT))
                         .executes(context -> updateInstrument(context, meta -> {
                             final MusicInstrument instrument = context.getArgument("instrument", MusicInstrument.class);
                             meta.setInstrument(instrument);
@@ -63,7 +63,7 @@ public class GoatHornSubCommand extends BrigadierCommand {
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(context.getSource(), "<red>You need to be holding an item in your hand.");
             return 0;
         }
@@ -83,12 +83,12 @@ public class GoatHornSubCommand extends BrigadierCommand {
         return 1;
     }
 
-    private int updateInstrument(final @NotNull CommandContext<CommandSourceStack> context, final Function<MusicInstrumentMeta, MusicInstrumentMeta> function) {
+    private int updateInstrument(final @NotNull CommandContext<CommandSourceStack> context, final UnaryOperator<MusicInstrumentMeta> function) {
         final Player user = (Player) context.getSource().getSender();
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(context.getSource(), "<red>You need to be holding an item in your hand.");
             return 0;
         }

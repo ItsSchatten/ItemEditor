@@ -1,11 +1,11 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
+import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes;
 import io.papermc.paper.registry.RegistryKey;
 import net.kyori.adventure.text.Component;
@@ -19,7 +19,7 @@ import org.bukkit.inventory.meta.trim.TrimMaterial;
 import org.bukkit.inventory.meta.trim.TrimPattern;
 import org.jetbrains.annotations.NotNull;
 
-public class ArmorTrimSubCommand extends BrigadierCommand {
+public final class ArmorTrimSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
@@ -34,13 +34,13 @@ public class ArmorTrimSubCommand extends BrigadierCommand {
 
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
-        return Commands.literal("trim")
-                .then(Commands.literal("-clear")
+        return literal("trim")
+                .then(literal("-clear")
                         .executes(context -> {
                             final Player user = (Player) context.getSource().getSender();
                             // Get the item stack in the user's main hand.
                             final ItemStack stack = user.getInventory().getItemInMainHand();
-                            if (stack.isEmpty()) {
+                            if (ItemValidator.isInvalid(stack)) {
                                 Utils.tell(user, "<red>You need to be holding an item in your hand.");
                                 return 0;
                             }
@@ -59,13 +59,13 @@ public class ArmorTrimSubCommand extends BrigadierCommand {
                             return 1;
                         })
                 )
-                .then(Commands.argument("pattern", ArgumentTypes.resource(RegistryKey.TRIM_PATTERN))
-                        .then(Commands.argument("material", ArgumentTypes.resource(RegistryKey.TRIM_MATERIAL))
+                .then(argument("pattern", ArgumentTypes.resource(RegistryKey.TRIM_PATTERN))
+                        .then(argument("material", ArgumentTypes.resource(RegistryKey.TRIM_MATERIAL))
                                 .executes(context -> {
                                     final Player user = (Player) context.getSource().getSender();
                                     // Get the item stack in the user's main hand.
                                     final ItemStack stack = user.getInventory().getItemInMainHand();
-                                    if (stack.isEmpty()) {
+                                    if (ItemValidator.isInvalid(stack)) {
                                         Utils.tell(user, "<red>You need to be holding an item in your hand.");
                                         return 0;
                                     }

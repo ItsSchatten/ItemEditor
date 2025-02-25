@@ -1,26 +1,28 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
+import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.commands.arguments.coordinates.Coordinates;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import org.bukkit.Location;
+import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.CompassMeta;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
-public class CompassSubCommand extends BrigadierCommand {
+public final class CompassSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
@@ -35,16 +37,16 @@ public class CompassSubCommand extends BrigadierCommand {
 
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
-        return Commands.literal("compass")
-                .then(Commands.literal("-clear")
-                        .executes(context -> resetCompass((Player) context.getSource()))
+        return literal("compass")
+                .then(literal("-clear")
+                        .executes(context -> resetCompass((Player) context.getSource().getSender()))
                 )
-                .then(Commands.literal("-view")
+                .then(literal("-view")
                         .executes(context -> {
                             final Player user = (Player) context.getSource().getSender();
                             // Get the item stack in the user's main hand.
                             final ItemStack stack = user.getInventory().getItemInMainHand();
-                            if (stack.isEmpty()) {
+                            if (ItemValidator.isInvalid(stack)) {
                                 Utils.tell(user, "<red>You need to be holding an item in your hand.");
                                 return 0;
                             }
@@ -63,7 +65,7 @@ public class CompassSubCommand extends BrigadierCommand {
                             return 1;
                         })
                 )
-                .then(Commands.argument("location", BlockPosArgument.blockPos())
+                .then(argument("location", BlockPosArgument.blockPos())
                         .executes(context -> handleCompass((Player) context.getSource().getSender(), (meta) -> {
                             final BlockPos position = context.getArgument("location", Coordinates.class).getBlockPos((net.minecraft.commands.CommandSourceStack) context.getSource());
                             final Location location = new Location(context.getSource().getLocation().getWorld(), position.getX(), position.getY(), position.getZ());
@@ -87,26 +89,35 @@ public class CompassSubCommand extends BrigadierCommand {
     private int resetCompass(final @NotNull Player user) {
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }
 
         // Get the item's meta and check if it's null, it really shouldn't be but safety.
-        if (!(stack.getItemMeta() instanceof final CompassMeta meta)) {
+        if (!(stack.getItemMeta() instanceof CompassMeta)) {
             Utils.tell(user, "<red>You are not holding a compass!");
             return 0;
         }
 
-        meta.setLodestone(null);
-        stack.setItemMeta(meta);
+        // Temporary solution to actually reset a lodestone compass back to a normal compass.
+        final net.minecraft.world.item.ItemStack nms = CraftItemStack.asNMSCopy(stack);
+        nms.remove(DataComponents.LODESTONE_TRACKER);
+
+        user.getInventory().setItemInMainHand(nms.asBukkitMirror());
+
+        // Commented out as this does not work for Paper servers,
+        // but leaving this here in the event the bug is patched.
+        //meta.setLodestone(null);
+        //meta.setLodestoneTracked(true);
+        //stack.setItemMeta(meta);
         return 1;
     }
 
-    private int handleCompass(final @NotNull Player user, final Function<CompassMeta, CompassMeta> function) {
+    private int handleCompass(final @NotNull Player user, final UnaryOperator<CompassMeta> function) {
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }

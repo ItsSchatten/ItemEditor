@@ -1,6 +1,7 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
 import com.itsschatten.itemeditor.commands.arguments.GenericEnumArgument;
+import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
@@ -8,11 +9,12 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes;
 import io.papermc.paper.registry.RegistryKey;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.minecraft.commands.SharedSuggestionProvider;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -21,9 +23,11 @@ import org.bukkit.inventory.meta.BookMeta;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Function;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.UnaryOperator;
 
-public class BookSubCommand extends BrigadierCommand {
+public final class BookSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
@@ -41,9 +45,9 @@ public class BookSubCommand extends BrigadierCommand {
 
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
-        return Commands.literal("book")
-                .then(Commands.literal("author")
-                        .then(Commands.literal("-clear")
+        return literal("book")
+                .then(literal("author")
+                        .then(literal("-clear")
                                 .executes(context -> handleBookUpdate((Player) context.getSource().getSender(), (meta) -> {
                                             meta.setAuthor(null);
                                             Utils.tell(context.getSource(), "<primary>Cleared the author from your book.");
@@ -51,7 +55,28 @@ public class BookSubCommand extends BrigadierCommand {
                                         })
                                 )
                         )
-                        .then(Commands.argument("author", StringArgumentType.greedyString())
+                        .then(argument("author", StringArgumentType.greedyString())
+                                .suggests((context, builder) -> {
+                                    final Player user = (Player) context.getSource().getSender();
+                                    // Get the item stack in the user's main hand.
+                                    final ItemStack stack = user.getInventory().getItemInMainHand();
+                                    if (ItemValidator.isInvalid(stack)) {
+                                        return builder.buildFuture();
+                                    }
+
+                                    // Make sure we have ItemMeta, it shouldn't ever be null.
+                                    // But still better to be safe than sorry.
+                                    // Also, it should be a book.
+                                    if (!(stack.getItemMeta() instanceof BookMeta bookMeta)) {
+                                        return builder.buildFuture();
+                                    }
+
+                                    if (bookMeta.author() == null) {
+                                        return builder.buildFuture();
+                                    }
+
+                                    return SharedSuggestionProvider.suggest(List.of(MiniMessage.miniMessage().serialize(Objects.requireNonNull(bookMeta.author()))), builder);
+                                })
                                 .executes(context -> handleBookUpdate((Player) context.getSource().getSender(), (meta) -> {
                                     final String author = StringArgumentType.getString(context, "author");
                                     meta.author(StringUtil.color(author));
@@ -60,8 +85,8 @@ public class BookSubCommand extends BrigadierCommand {
                                 }))
                         )
                 )
-                .then(Commands.literal("title")
-                        .then(Commands.literal("-clear")
+                .then(literal("title")
+                        .then(literal("-clear")
                                 .executes(context -> handleBookUpdate((Player) context.getSource().getSender(), (meta) -> {
                                             meta.setTitle(null);
                                             Utils.tell(context.getSource(), "<primary>Cleared the title from your book.");
@@ -69,7 +94,28 @@ public class BookSubCommand extends BrigadierCommand {
                                         })
                                 )
                         )
-                        .then(Commands.argument("title", StringArgumentType.greedyString())
+                        .then(argument("title", StringArgumentType.greedyString())
+                                .suggests((context, builder) -> {
+                                    final Player user = (Player) context.getSource().getSender();
+                                    // Get the item stack in the user's main hand.
+                                    final ItemStack stack = user.getInventory().getItemInMainHand();
+                                    if (ItemValidator.isInvalid(stack)) {
+                                        return builder.buildFuture();
+                                    }
+
+                                    // Make sure we have ItemMeta, it shouldn't ever be null.
+                                    // But still better to be safe than sorry.
+                                    // Also, it should be a book.
+                                    if (!(stack.getItemMeta() instanceof BookMeta bookMeta)) {
+                                        return builder.buildFuture();
+                                    }
+
+                                    if (bookMeta.title() == null) {
+                                        return builder.buildFuture();
+                                    }
+
+                                    return SharedSuggestionProvider.suggest(List.of(MiniMessage.miniMessage().serialize(Objects.requireNonNull(bookMeta.title()))), builder);
+                                })
                                 .executes(context -> handleBookUpdate((Player) context.getSource().getSender(), (meta) -> {
                                     String title = StringArgumentType.getString(context, "title");
                                     if (title.length() > 32) {
@@ -84,8 +130,8 @@ public class BookSubCommand extends BrigadierCommand {
                                 }))
                         )
                 )
-                .then(Commands.literal("generation")
-                        .then(Commands.literal("-clear")
+                .then(literal("generation")
+                        .then(literal("-clear")
                                 .executes(context -> handleBookUpdate((Player) context.getSource().getSender(), (meta) -> {
                                             meta.setGeneration(null);
                                             Utils.tell(context.getSource(), "<primary>Removed the generation from your book.");
@@ -93,7 +139,7 @@ public class BookSubCommand extends BrigadierCommand {
                                         })
                                 )
                         )
-                        .then(Commands.argument("generation", GenericEnumArgument.generic(BookMeta.Generation.class))
+                        .then(argument("generation", GenericEnumArgument.generic(BookMeta.Generation.class))
                                 .executes(context -> handleBookUpdate((Player) context.getSource().getSender(), (meta) -> {
                                     final BookMeta.Generation generation = context.getArgument("generation", BookMeta.Generation.class);
                                     meta.setGeneration(generation);
@@ -102,11 +148,11 @@ public class BookSubCommand extends BrigadierCommand {
                                 }))
                         )
                 )
-                .then(Commands.literal("-view")
+                .then(literal("-view")
                         .executes(context -> {
                             final Player user = (Player) context.getSource().getSender();
                             final ItemStack stack = user.getInventory().getItemInMainHand();
-                            if (stack.isEmpty()) {
+                            if (ItemValidator.isInvalid(stack)) {
                                 Utils.tell(user, "<red>You need to be holding an item in your hand.");
                                 return 0;
                             }
@@ -138,8 +184,8 @@ public class BookSubCommand extends BrigadierCommand {
                             return 1;
                         })
                 )
-                .then(Commands.argument("enchantment", ArgumentTypes.resource(RegistryKey.ENCHANTMENT))
-                        .then(Commands.argument("level", IntegerArgumentType.integer(0))
+                .then(argument("enchantment", ArgumentTypes.resource(RegistryKey.ENCHANTMENT))
+                        .then(argument("level", IntegerArgumentType.integer(0))
                                 .executes(context -> handleEnchantmentStore((Player) context.getSource().getSender(), (meta) -> {
                                     final Enchantment enchantment = context.getArgument("enchantment", Enchantment.class);
                                     if (enchantment == null) {
@@ -166,9 +212,9 @@ public class BookSubCommand extends BrigadierCommand {
                 ;
     }
 
-    private int handleBookUpdate(@NotNull Player user, Function<BookMeta, BookMeta> function) {
+    private int handleBookUpdate(@NotNull Player user, UnaryOperator<BookMeta> function) {
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }
@@ -187,9 +233,9 @@ public class BookSubCommand extends BrigadierCommand {
         return 1;
     }
 
-    private int handleEnchantmentStore(@NotNull Player user, Function<EnchantmentStorageMeta, EnchantmentStorageMeta> function) {
+    private int handleEnchantmentStore(@NotNull Player user, UnaryOperator<EnchantmentStorageMeta> function) {
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }

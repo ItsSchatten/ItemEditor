@@ -1,12 +1,12 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
+import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.entity.Player;
@@ -14,26 +14,26 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
 
-public class UnbreakableSubCommand extends BrigadierCommand {
+public final class UnbreakableSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
     public @NotNull Component descriptionComponent() {
-        return StringUtil.color("<primary>/ie unbreakable <secondary><true|false|yes|no></secondary>").hoverEvent(StringUtil.color("""
+        return StringUtil.color("<primary>/ie unbreakable <secondary><true|false></secondary>").hoverEvent(StringUtil.color("""
                 <primary>Sets an item to be unbreakable or not.
                 \s
-                ◼ <secondary><true|false|yes|no><optional></secondary> true/false to determine if it's unbreakable or not, if not provided it will toggle the status.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand("/ie unbreakable "));
+                ◼ <secondary><true|false><optional></secondary> true/false to determine if it's unbreakable or not, if not provided it will toggle the status.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand("/ie unbreakable "));
     }
 
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
-        return Commands.literal("unbreakable")
-                .then(Commands.literal("-view")
+        return literal("unbreakable")
+                .then(literal("-view")
                         .executes(context -> {
                             final Player user = (Player) context.getSource().getSender();
                             // Get the item stack in the user's main hand.
                             final ItemStack stack = user.getInventory().getItemInMainHand();
-                            if (stack.isEmpty()) {
+                            if (ItemValidator.isInvalid(stack)) {
                                 Utils.tell(user, "<red>You need to be holding an item in your hand.");
                                 return 0;
                             }
@@ -49,12 +49,12 @@ public class UnbreakableSubCommand extends BrigadierCommand {
                             return 1;
                         })
                 )
-                .then(Commands.argument("value", BoolArgumentType.bool())
+                .then(argument("value", BoolArgumentType.bool())
                         .executes(context -> {
                             final Player user = (Player) context.getSource().getSender();
                             // Get the item stack in the user's main hand.
                             final ItemStack stack = user.getInventory().getItemInMainHand();
-                            if (stack.isEmpty()) {
+                            if (ItemValidator.isInvalid(stack)) {
                                 Utils.tell(user, "<red>You need to be holding an item in your hand.");
                                 return 0;
                             }
@@ -84,7 +84,7 @@ public class UnbreakableSubCommand extends BrigadierCommand {
                     final Player user = (Player) context.getSource().getSender();
                     // Get the item stack in the user's main hand.
                     final ItemStack stack = user.getInventory().getItemInMainHand();
-                    if (stack.isEmpty()) {
+                    if (ItemValidator.isInvalid(stack)) {
                         Utils.tell(user, "<red>You need to be holding an item in your hand.");
                         return 0;
                     }

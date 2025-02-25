@@ -1,14 +1,13 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
+import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
-import com.itsschatten.yggdrasil.commands.CommandBase;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.entity.Player;
@@ -16,15 +15,14 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
-public class HideTooltipSubCommand extends BrigadierCommand {
+public final class HideTooltipSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
     public @NotNull Component descriptionComponent() {
-        return StringUtil.color("<primary>/ie<secondary><true|false|yes|no></secondary>").hoverEvent(StringUtil.color("""
+        return StringUtil.color("<primary>/ie hidetooltip <secondary><true|false></secondary>").hoverEvent(StringUtil.color("""
                 <primary>Hides the item's entire tooltip when hovered in an inventory..
                 \s
                 ◼ <secondary><true|false><optional></secondary> Set whether to hide the tooltip or not.
@@ -33,8 +31,8 @@ public class HideTooltipSubCommand extends BrigadierCommand {
 
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
-        return Commands.literal("hidetooltip")
-                .then(Commands.argument("value", BoolArgumentType.bool())
+        return literal("hidetooltip")
+                .then(argument("value", BoolArgumentType.bool())
                         .executes(context -> updateTooltip(context, meta -> {
                             final boolean value = BoolArgumentType.getBool(context, "value");
 
@@ -44,7 +42,7 @@ public class HideTooltipSubCommand extends BrigadierCommand {
                             return meta;
                         }))
                 )
-                .then(Commands.literal("-view")
+                .then(literal("-view")
                         .executes(this::handleView)
                 )
                 .executes(context -> updateTooltip(context, meta -> {
@@ -54,12 +52,12 @@ public class HideTooltipSubCommand extends BrigadierCommand {
                 }));
     }
 
-    private int updateTooltip(final @NotNull CommandContext<CommandSourceStack> context, final Function<ItemMeta, ItemMeta> function) {
+    private int updateTooltip(final @NotNull CommandContext<CommandSourceStack> context, final UnaryOperator<ItemMeta> function) {
         final Player user = (Player) context.getSource().getSender();
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }
@@ -80,7 +78,7 @@ public class HideTooltipSubCommand extends BrigadierCommand {
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }

@@ -1,12 +1,12 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
+import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.entity.Player;
@@ -16,7 +16,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.function.BiFunction;
 
-public class DurabilitySubCommand extends BrigadierCommand {
+public final class DurabilitySubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
@@ -35,13 +35,13 @@ public class DurabilitySubCommand extends BrigadierCommand {
 
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
-        return Commands.literal("durability")
-                .then(Commands.literal("-view")
+        return literal("durability")
+                .then(literal("-view")
                         .executes(context -> {
                             final Player user = (Player) context.getSource().getSender();
                             // Get the item stack in the user's main hand.
                             final ItemStack stack = user.getInventory().getItemInMainHand();
-                            if (stack.isEmpty()) {
+                            if (ItemValidator.isInvalid(stack)) {
                                 Utils.tell(user, "<red>You need to be holding an item in your hand.");
                                 return 0;
                             }
@@ -61,16 +61,16 @@ public class DurabilitySubCommand extends BrigadierCommand {
                             return 1;
                         })
                 )
-                .then(Commands.literal("repair")
+                .then(literal("repair")
                         .executes(context -> updateDurability((Player) context.getSource().getSender(), (meta, defaultMax) -> {
                             meta.setDamage(0);
                             Utils.tell(context.getSource(), "<primary>Repaired your item!<br>Set the damage of your item to <secondary>0</secondary><gray>/" + (meta.hasMaxDamage() ? meta.getMaxDamage() : defaultMax) + "</gray>.");
                             return meta;
                         }))
                 )
-                .then(Commands.literal("max")
-                        .then(Commands.argument("maximum durability", IntegerArgumentType.integer(1))
-                                .then(Commands.literal("-reset")
+                .then(literal("max")
+                        .then(argument("maximum durability", IntegerArgumentType.integer(1))
+                                .then(literal("-reset")
                                         .executes(context -> updateDurability((Player) context.getSource().getSender(), (meta, defaultMax) -> {
                                             meta.resetDamage();
                                             Utils.tell(context.getSource(), "<primary>Reset your item's maximum durability to <secondary>" + defaultMax + "</secondary>!");
@@ -86,7 +86,7 @@ public class DurabilitySubCommand extends BrigadierCommand {
                                 }))
                         )
                 )
-                .then(Commands.argument("durability", IntegerArgumentType.integer(0))
+                .then(argument("durability", IntegerArgumentType.integer(0))
                         .executes(context -> updateDurability((Player) context.getSource().getSender(), (meta, defaultMax) -> {
                             final int amount = IntegerArgumentType.getInteger(context, "durability");
 
@@ -95,8 +95,8 @@ public class DurabilitySubCommand extends BrigadierCommand {
                             return meta;
                         }))
                 )
-                .then(Commands.literal("set")
-                        .then(Commands.argument("durability", IntegerArgumentType.integer(0))
+                .then(literal("set")
+                        .then(argument("durability", IntegerArgumentType.integer(0))
                                 .executes(context -> updateDurability((Player) context.getSource().getSender(), (meta, defaultMax) -> {
                                     final int amount = IntegerArgumentType.getInteger(context, "durability");
 
@@ -106,8 +106,8 @@ public class DurabilitySubCommand extends BrigadierCommand {
                                 }))
                         )
                 )
-                .then(Commands.literal("remove")
-                        .then(Commands.argument("durability", IntegerArgumentType.integer(0))
+                .then(literal("remove")
+                        .then(argument("durability", IntegerArgumentType.integer(0))
                                 .executes(context -> updateDurability((Player) context.getSource().getSender(), (meta, defaultMax) -> {
                                     final int amount = IntegerArgumentType.getInteger(context, "durability");
 
@@ -117,8 +117,8 @@ public class DurabilitySubCommand extends BrigadierCommand {
                                 }))
                         )
                 )
-                .then(Commands.literal("add")
-                        .then(Commands.argument("durability", IntegerArgumentType.integer(0))
+                .then(literal("add")
+                        .then(argument("durability", IntegerArgumentType.integer(0))
                                 .executes(context -> updateDurability((Player) context.getSource().getSender(), (meta, defaultMax) -> {
                                     final int amount = IntegerArgumentType.getInteger(context, "durability");
 
@@ -134,7 +134,7 @@ public class DurabilitySubCommand extends BrigadierCommand {
     private int updateDurability(final @NotNull Player user, final BiFunction<Damageable, Short, Damageable> function) {
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }

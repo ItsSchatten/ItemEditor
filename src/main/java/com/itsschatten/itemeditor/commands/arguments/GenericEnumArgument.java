@@ -17,7 +17,7 @@ import java.util.EnumSet;
 import java.util.concurrent.CompletableFuture;
 
 @SuppressWarnings("UnstableApiUsage")
-public class GenericEnumArgument<E extends Enum<E>> implements CustomArgumentType.Converted<E, String> {
+public final class GenericEnumArgument<E extends Enum<E>> implements CustomArgumentType.Converted<E, String> {
 
     final Class<E> enumClass;
 
@@ -44,7 +44,7 @@ public class GenericEnumArgument<E extends Enum<E>> implements CustomArgumentTyp
         } catch (IllegalArgumentException e) {
             throw new SimpleCommandExceptionType(Component.literal("Failed to find '" + nativeType + "' in " + enumClass.getSimpleName() + ".")).create();
         } catch (NullPointerException e) {
-            throw new SimpleCommandExceptionType(Component.literal("Enum class is null while attempting to parse value for it!")).create();
+            throw new SimpleCommandExceptionType(Component.literal("Enum class is null while attempting to parse a value for it!")).create();
         }
     }
 

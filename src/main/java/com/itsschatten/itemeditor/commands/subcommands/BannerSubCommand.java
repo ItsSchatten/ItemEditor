@@ -2,20 +2,22 @@ package com.itsschatten.itemeditor.commands.subcommands;
 
 import com.itsschatten.itemeditor.commands.arguments.GenericEnumArgument;
 import com.itsschatten.itemeditor.menus.BannerMenu;
+import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
+import com.itsschatten.yggdrasil.menus.MenuUtils;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes;
 import io.papermc.paper.command.brigadier.argument.RegistryArgumentExtractor;
+import io.papermc.paper.registry.PaperRegistryAccess;
+import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.DyeColor;
-import org.bukkit.Registry;
 import org.bukkit.block.banner.Pattern;
 import org.bukkit.block.banner.PatternType;
 import org.bukkit.entity.Player;
@@ -24,11 +26,14 @@ import org.bukkit.inventory.meta.BannerMeta;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Objects;
+
+// FIXME: Use methods. or more of them.
 
 /**
  * Subcommand responsible for handling banners.
  */
-public class BannerSubCommand extends BrigadierCommand {
+public final class BannerSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
@@ -45,19 +50,19 @@ public class BannerSubCommand extends BrigadierCommand {
 
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
-        return Commands.literal("banner")
-                .then(Commands.literal("menu")
+        return literal("banner")
+                .then(literal("menu")
                         .executes(context -> {
                             openMenu(context.getSource());
                             return 1;
                         })
                 )
-                .then(Commands.literal("-view")
+                .then(literal("-view")
                         .executes(context -> {
                             final Player user = (Player) context.getSource().getSender();
                             // Get the item stack in the user's main hand.
                             final ItemStack stack = user.getInventory().getItemInMainHand();
-                            if (stack.isEmpty()) {
+                            if (ItemValidator.isInvalid(stack)) {
                                 Utils.tell(user, "<red>You need to be holding an item in your hand.");
                                 return 0;
                             }
@@ -77,16 +82,16 @@ public class BannerSubCommand extends BrigadierCommand {
                             Utils.tell(user, "<primary>Your banner has the following patterns:");
                             Utils.tell(user, "<primary>Your banner's base color is: <secondary>" + stack.getType().getKey().getKey().toLowerCase().replace("_banner", ""));
                             meta.getPatterns().forEach((pattern) -> Utils.tell(user, "<primary>◼ <c:#" + Integer.toHexString(pattern.getColor().getColor().asRGB()) + ">" + pattern.getColor().name().toLowerCase().replace("_", " ") + "</c> " +
-                                    "<secondary>" + pattern.getPattern().key().asString() + "</secondary>"));
+                                    "<secondary>" + Objects.requireNonNull(RegistryAccess.registryAccess().getRegistry(RegistryKey.BANNER_PATTERN).getKey(pattern.getPattern())).asString() + "</secondary>"));
                             return 1;
                         })
                 )
-                .then(Commands.literal("-clear")
+                .then(literal("-clear")
                         .executes(context -> {
                             final Player user = (Player) context.getSource().getSender();
                             // Get the item stack in the user's main hand.
                             final ItemStack stack = user.getInventory().getItemInMainHand();
-                            if (stack.isEmpty()) {
+                            if (ItemValidator.isInvalid(stack)) {
                                 Utils.tell(user, "<red>You need to be holding an item in your hand.");
                                 return 0;
                             }
@@ -111,11 +116,11 @@ public class BannerSubCommand extends BrigadierCommand {
                         })
 
                 )
-                .then(Commands.literal("add")
-                        .then(Commands.argument("pattern", ArgumentTypes.resourceKey(RegistryKey.BANNER_PATTERN))
-                                .then(Commands.argument("color", GenericEnumArgument.generic(DyeColor.class))
+                .then(literal("add")
+                        .then(argument("pattern", ArgumentTypes.resourceKey(RegistryKey.BANNER_PATTERN))
+                                .then(argument("color", GenericEnumArgument.generic(DyeColor.class))
                                         .executes(context -> {
-                                            final PatternType type = Registry.BANNER_PATTERN.get(RegistryArgumentExtractor.getTypedKey(context, RegistryKey.BANNER_PATTERN, "pattern").key());
+                                            final PatternType type = PaperRegistryAccess.instance().getRegistry(RegistryKey.BANNER_PATTERN).get(RegistryArgumentExtractor.getTypedKey(context, RegistryKey.BANNER_PATTERN, "pattern").key());
                                             final DyeColor color = context.getArgument("color", DyeColor.class);
 
                                             addPattern(context.getSource(), type, color);
@@ -123,14 +128,14 @@ public class BannerSubCommand extends BrigadierCommand {
                                         })
                                 )
                                 .executes(context -> {
-                                    final PatternType type = Registry.BANNER_PATTERN.get(RegistryArgumentExtractor.getTypedKey(context, RegistryKey.BANNER_PATTERN, "pattern").key());
+                                    final PatternType type = PaperRegistryAccess.instance().getRegistry(RegistryKey.BANNER_PATTERN).get(RegistryArgumentExtractor.getTypedKey(context, RegistryKey.BANNER_PATTERN, "pattern").key());
                                     addPattern(context.getSource(), type, DyeColor.WHITE);
                                     return 1;
                                 })
                         )
                 )
-                .then(Commands.literal("remove")
-                        .then(Commands.argument("pattern", IntegerArgumentType.integer(0))
+                .then(literal("remove")
+                        .then(argument("pattern", IntegerArgumentType.integer(0))
                                 .executes(context -> {
                                     removePattern(context.getSource(), IntegerArgumentType.getInteger(context, "pattern"));
                                     return 1;
@@ -143,11 +148,11 @@ public class BannerSubCommand extends BrigadierCommand {
                 });
     }
 
-    private void openMenu(final CommandSourceStack source) {
+    private void openMenu(final @NotNull CommandSourceStack source) {
         final Player user = (Player) source.getSender();
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return;
         }
@@ -158,7 +163,7 @@ public class BannerSubCommand extends BrigadierCommand {
             return;
         }
 
-        new BannerMenu(stack, meta).displayTo(Utils.getManager().getMenuHolder(user));
+        new BannerMenu(stack, meta).displayTo(MenuUtils.getManager().getMenuHolder(user));
     }
 
     private void addPattern(final CommandSourceStack source, final PatternType type, final DyeColor color) {
@@ -170,7 +175,7 @@ public class BannerSubCommand extends BrigadierCommand {
         final Player user = (Player) source.getSender();
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return;
         }
@@ -185,7 +190,7 @@ public class BannerSubCommand extends BrigadierCommand {
         meta.addPattern(pattern);
         stack.setItemMeta(meta);
 
-        Utils.tell(user, "<primary>Add the pattern <secondary>" + type.key().asString() + "</secondary> with the color " +
+        Utils.tell(user, "<primary>Added the pattern <secondary>" + Objects.requireNonNull(RegistryAccess.registryAccess().getRegistry(RegistryKey.BANNER_PATTERN).getKey(type)).asString() + "</secondary> with the color " +
                 "<c:#" + Integer.toHexString(pattern.getColor().getColor().asRGB()) + ">" + pattern.getColor().name().toLowerCase().replace("_", " ") + "</c>.");
     }
 
@@ -193,7 +198,7 @@ public class BannerSubCommand extends BrigadierCommand {
         final Player user = (Player) source.getSender();
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return;
         }
@@ -215,8 +220,7 @@ public class BannerSubCommand extends BrigadierCommand {
 
         meta.removePattern(finalPattern);
         stack.setItemMeta(meta);
-        Utils.tell(user, "<primary>Removed the pattern <secondary>" + pattern.getPattern().key().asString() + "</secondary> with color " +
+        Utils.tell(user, "<primary>Removed the pattern <secondary>" + Objects.requireNonNull(RegistryAccess.registryAccess().getRegistry(RegistryKey.BANNER_PATTERN).getKey(pattern.getPattern())).asString() + "</secondary> with color " +
                 "<c:#" + Integer.toHexString(pattern.getColor().getColor().asRGB()) + ">" + pattern.getColor().name().toLowerCase().replace("_", " ") + "</c> from your item.");
-
     }
 }

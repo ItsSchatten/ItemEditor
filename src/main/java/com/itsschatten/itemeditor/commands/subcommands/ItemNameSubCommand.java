@@ -1,5 +1,6 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
+import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
@@ -7,7 +8,6 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
-public class ItemNameSubCommand extends BrigadierCommand {
+public final class ItemNameSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
@@ -37,8 +37,8 @@ public class ItemNameSubCommand extends BrigadierCommand {
 
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
-        return Commands.literal("name")
-                .then(Commands.argument("name", StringArgumentType.greedyString())
+        return literal("name")
+                .then(argument("name", StringArgumentType.greedyString())
                         .executes(context -> updateName(context, (stack, meta) -> {
                             final Component component = StringUtil.color("<!i>" + StringArgumentType.getString(context, "name"));
                             meta.itemName(component);
@@ -54,7 +54,7 @@ public class ItemNameSubCommand extends BrigadierCommand {
                         }))
                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(List.of(getName(context)), builder))
                 )
-                .then(Commands.literal("-clear")
+                .then(literal("-clear")
                         .executes(context -> updateName(context, (stack, meta) -> {
                             meta.itemName(null);
 
@@ -62,7 +62,7 @@ public class ItemNameSubCommand extends BrigadierCommand {
                             return meta;
                         }))
                 )
-                .then(Commands.literal("-view")
+                .then(literal("-view")
                         .executes(this::handleView)
                 );
     }
@@ -72,7 +72,7 @@ public class ItemNameSubCommand extends BrigadierCommand {
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             return "";
         }
 
@@ -90,7 +90,7 @@ public class ItemNameSubCommand extends BrigadierCommand {
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }
@@ -111,7 +111,7 @@ public class ItemNameSubCommand extends BrigadierCommand {
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }

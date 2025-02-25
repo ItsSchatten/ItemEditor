@@ -1,12 +1,12 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
 import com.itsschatten.itemeditor.commands.arguments.GenericEnumArgument;
+import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.DyeColor;
@@ -19,11 +19,9 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.TropicalFishBucketMeta;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
-public class BucketSubCommand extends BrigadierCommand {
-
-    // FIXME
+public final class BucketSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
@@ -42,13 +40,13 @@ public class BucketSubCommand extends BrigadierCommand {
 
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
-        return Commands.literal("bucket")
-                .then(Commands.literal("-view")
+        return literal("bucket")
+                .then(literal("-view")
                         .executes(context -> {
                             final Player user = (Player) context.getSource().getSender();
                             // Get the item stack in the user's main hand.
                             final ItemStack stack = user.getInventory().getItemInMainHand();
-                            if (stack.isEmpty()) {
+                            if (ItemValidator.isInvalid(stack)) {
                                 Utils.tell(user, "<red>You need to be holding an item in your hand.");
                                 return 0;
                             }
@@ -81,7 +79,7 @@ public class BucketSubCommand extends BrigadierCommand {
                             return 1;
                         })
                 )
-                .then(Commands.argument("variant", GenericEnumArgument.generic(Axolotl.Variant.class))
+                .then(argument("variant", GenericEnumArgument.generic(Axolotl.Variant.class))
                         .executes(context -> handleAxolotl((Player) context.getSource().getSender(), (meta) -> {
                             final Axolotl.Variant variant = context.getArgument("variant", Axolotl.Variant.class);
                             meta.setVariant(variant);
@@ -89,17 +87,17 @@ public class BucketSubCommand extends BrigadierCommand {
                             return meta;
                         }))
                 )
-                .then(Commands.literal("body")
-                        .then(Commands.argument("color", GenericEnumArgument.generic(DyeColor.class))
+                .then(literal("body")
+                        .then(argument("color", GenericEnumArgument.generic(DyeColor.class))
                                 .executes(context -> handleTropicalFish((Player) context.getSource().getSender(), (meta) -> {
                                     meta.setBodyColor(context.getArgument("color", DyeColor.class));
                                     return meta;
                                 }))
                         )
                 )
-                .then(Commands.literal("pattern")
-                        .then(Commands.argument("pattern", GenericEnumArgument.generic(TropicalFish.Pattern.class))
-                                .then(Commands.argument("color", GenericEnumArgument.generic(DyeColor.class))
+                .then(literal("pattern")
+                        .then(argument("pattern", GenericEnumArgument.generic(TropicalFish.Pattern.class))
+                                .then(argument("color", GenericEnumArgument.generic(DyeColor.class))
                                         .executes(context -> handleTropicalFish((Player) context.getSource().getSender(), (meta) -> {
                                             meta.setPattern(context.getArgument("pattern", TropicalFish.Pattern.class));
                                             meta.setPatternColor(context.getArgument("color", DyeColor.class));
@@ -115,10 +113,10 @@ public class BucketSubCommand extends BrigadierCommand {
                 ;
     }
 
-    private int handleTropicalFish(final @NotNull Player user, final Function<TropicalFishBucketMeta, TropicalFishBucketMeta> function) {
+    private int handleTropicalFish(final @NotNull Player user, final UnaryOperator<TropicalFishBucketMeta> function) {
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }
@@ -133,10 +131,10 @@ public class BucketSubCommand extends BrigadierCommand {
         return 1;
     }
 
-    private int handleAxolotl(final @NotNull Player user, final Function<AxolotlBucketMeta, AxolotlBucketMeta> function) {
+    private int handleAxolotl(final @NotNull Player user, final UnaryOperator<AxolotlBucketMeta> function) {
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }

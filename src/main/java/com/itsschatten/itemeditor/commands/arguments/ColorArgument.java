@@ -10,7 +10,7 @@ import org.bukkit.Color;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
-public class ColorArgument implements CustomArgumentType.Converted<Color, String> {
+public final class ColorArgument implements CustomArgumentType.Converted<Color, String> {
 
     @Override
     public @NotNull Color convert(@NotNull String nativeType) throws CommandSyntaxException {
@@ -23,7 +23,7 @@ public class ColorArgument implements CustomArgumentType.Converted<Color, String
         }
 
         if (nativeType.length() < 6) {
-            throw new SimpleCommandExceptionType(Component.literal("A hex color string must contain 6 characters (not including a #)")).create();
+            throw new SimpleCommandExceptionType(Component.literal("A hex color string must contain at least 6 characters ('#' are optional and must be provided within quotes.)")).create();
         }
 
         return Color.fromRGB(Integer.parseInt(nativeType.substring(0, 6), 16));

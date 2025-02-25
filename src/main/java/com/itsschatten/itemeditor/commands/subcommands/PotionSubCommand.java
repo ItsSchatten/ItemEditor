@@ -1,19 +1,19 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
+import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
-import com.itsschatten.yggdrasil.StringWrapUtils;
 import com.itsschatten.yggdrasil.Utils;
+import com.itsschatten.yggdrasil.WrapUtils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes;
 import io.papermc.paper.registry.RegistryKey;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
-import org.bukkit.Registry;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.PotionMeta;
@@ -24,20 +24,20 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.function.Function;
-import java.util.stream.Stream;
+import java.util.Objects;
+import java.util.function.UnaryOperator;
 
-public class PotionSubCommand extends BrigadierCommand {
+public final class PotionSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
     public @NotNull Component descriptionComponent() {
-        return StringUtil.color("<primary>/ie potion <secondary><add|base|remove|-clear|-view> ...").hoverEvent(StringUtil.color("""
+        return StringUtil.color("<primary>/ie potion <secondary><add|base|name|remove|-clear|-view> ...").hoverEvent(StringUtil.color("""
                 <primary>Add or remove an attribute from an item.
                 \s
                 ◼ <secondary><base><required> <type><required></secondary> Set the base potion type.
                 ◼ <secondary><add><required> <effect><required> <duration><required> [level]<optional></secondary> Add a potion effect to the potion.
+                ◼ <secondary><name><required> <key><required></secondary> Set the custom name of the potion.
                 ◼ <secondary><remove><required> <effect><required></secondary> Remove a potion effect from the potion.
                 ◼ <secondary><-clear><required></secondary> Clear all effects on the potion.
                 ◼ <secondary><-view><optional></secondary> View all potion effects on the item.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand("/ie potion "));
@@ -45,9 +45,21 @@ public class PotionSubCommand extends BrigadierCommand {
 
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
-        return Commands.literal("potion")
-                .then(Commands.literal("base")
-                        .then(Commands.literal("-clear")
+        return literal("potion")
+                .then(literal("name")
+                        .then(argument("key", StringArgumentType.word())
+                                .executes(context -> updatePotion(context, potion -> {
+                                    final String name = StringArgumentType.getString(context, "key");
+                                    potion.setCustomPotionName(name);
+
+                                    Utils.tell(context.getSource(), "<primary>Set your potion's custom name to: <secondary>" + name + "</secondary>!"
+                                    );
+                                    return potion;
+                                }))
+                        )
+                )
+                .then(literal("base")
+                        .then(literal("-clear")
                                 .executes(context -> updatePotion(context, potion -> {
                                     potion.setBasePotionType(null);
 
@@ -57,7 +69,7 @@ public class PotionSubCommand extends BrigadierCommand {
                                     return potion;
                                 }))
                         )
-                        .then(Commands.argument("potion", ArgumentTypes.resource(RegistryKey.POTION))
+                        .then(argument("potion", ArgumentTypes.resource(RegistryKey.POTION))
                                 .executes(context -> updatePotion(context, potion -> {
                                     final PotionType type = context.getArgument("potion", PotionType.class);
                                     potion.setBasePotionType(type);
@@ -67,10 +79,10 @@ public class PotionSubCommand extends BrigadierCommand {
                                 }))
                         )
                 )
-                .then(Commands.literal("add")
-                        .then(Commands.argument("potion", ArgumentTypes.resource(RegistryKey.MOB_EFFECT))
-                                .then(Commands.argument("duration", IntegerArgumentType.integer(-1))
-                                        .then(Commands.argument("amplifier", IntegerArgumentType.integer(1))
+                .then(literal("add")
+                        .then(argument("potion", ArgumentTypes.resource(RegistryKey.MOB_EFFECT))
+                                .then(argument("duration", IntegerArgumentType.integer(-1))
+                                        .then(argument("amplifier", IntegerArgumentType.integer(1))
                                                 .executes(context -> updatePotion(context, potion -> {
                                                     final PotionEffect effect = buildEffect(context);
                                                     potion.addCustomEffect(effect, true);
@@ -82,8 +94,8 @@ public class PotionSubCommand extends BrigadierCommand {
                                 )
                         )
                 )
-                .then(Commands.literal("remove")
-                        .then(Commands.argument("potion", ArgumentTypes.resource(RegistryKey.MOB_EFFECT))
+                .then(literal("remove")
+                        .then(argument("potion", ArgumentTypes.resource(RegistryKey.MOB_EFFECT))
                                 .executes(context -> updatePotion(context, potion -> {
                                     final PotionEffectType type = context.getArgument("potion", PotionEffectType.class);
                                     potion.removeCustomEffect(type);
@@ -93,7 +105,7 @@ public class PotionSubCommand extends BrigadierCommand {
                                 }))
                         )
                 )
-                .then(Commands.literal("-clear")
+                .then(literal("-clear")
                         .executes(context -> updatePotion(context, potion -> {
                             potion.clearCustomEffects();
                             Utils.tell(context.getSource(), "<primary>Cleared all custom potion effects from your potion." +
@@ -101,17 +113,16 @@ public class PotionSubCommand extends BrigadierCommand {
                             return potion;
                         }))
                 )
-                .then(Commands.literal("-view")
+                .then(literal("-view")
                         .executes(this::handleView)
-                )
-                ;
+                );
     }
 
     private int handleView(@NotNull CommandContext<CommandSourceStack> context) {
         final Player user = (Player) context.getSource().getSender();
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }
@@ -122,30 +133,36 @@ public class PotionSubCommand extends BrigadierCommand {
             return 0;
         }
 
-        if (meta.hasBasePotionType()) {
+        if (!meta.hasBasePotionType()) {
             Utils.tell(context.getSource(), "<primary>Your potion doesn't have a base type.");
         } else {
-            Utils.tell(context.getSource(), "<primary>Your base potion type is: <secondary>" + meta.getBasePotionType().key().asString() + "</secondary>.");
+            Utils.tell(context.getSource(), "<primary>Your base potion type is: <secondary>" + Objects.requireNonNull(meta.getBasePotionType()).key().asString() + "</secondary>.");
         }
 
-        if (meta.hasCustomEffects()) {
+        if (!meta.hasCustomEffects()) {
             Utils.tell(context.getSource(), "<primary>Your potion has no custom effects.");
         } else {
             final List<String> wrapString = new ArrayList<>();
             meta.getCustomEffects().forEach((effect) -> wrapString.add("<secondary><hover:show_text:'" + getHoverFromEffect(effect) + "'>" + effect.getType().key().asString() + "</hover></secondary>"));
 
             final String toWrap = String.join(", ", wrapString);
-            Utils.tell(context.getSource(), "<primary>Your potion has the following custom effects:" + StringWrapUtils.wrap(toWrap, 35, "|"));
+            Utils.tell(context.getSource(), "<primary>Your potion has the following custom effects:" + WrapUtils.wrap(toWrap, 35, "|"));
+        }
+
+        if (!meta.hasCustomPotionName()) {
+            Utils.tell(context, "<primary>Your potion doesn't have a custom name set.");
+        } else {
+            Utils.tell(context, "<primary>Your potion's custom name is: <secondary>" + meta.getCustomPotionName() + "</secondary>!");
         }
 
         return 1;
     }
 
-    private int updatePotion(final @NotNull CommandContext<CommandSourceStack> context, final Function<PotionMeta, PotionMeta> function) {
+    private int updatePotion(final @NotNull CommandContext<CommandSourceStack> context, final UnaryOperator<PotionMeta> function) {
         final Player user = (Player) context.getSource().getSender();
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }
@@ -157,7 +174,6 @@ public class PotionSubCommand extends BrigadierCommand {
         }
 
         stack.setItemMeta(function.apply(meta));
-
         return 1;
     }
 

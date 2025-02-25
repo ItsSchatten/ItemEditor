@@ -1,0 +1,45 @@
+#
+# A tag must abide by the following regex: [!?#]?[a-z0-9_-]*
+#
+# Basically; it can contain one value of '!?#' and then any number of lowercase alphanumeric values, underscores, and dashes.
+# Invalid tag name: ANcada@#!@#
+# Valid tag name: primary_color
+#
+# Any of the below values may be uppercase or lowercase.
+# Valid tag types: pre_parse, style, insert, insert_closed
+# pre_parse: Supplies the value such that it will be inserted pre-parsing.
+# style: Simply applies the style to all text within it.
+# insert: Inserts the value into the string but doesn't close any formatting, formatting may be closed due to how Adventure closes components.
+# insert_closed: Inserts the value into the string but closes all formatting.
+#
+# Valid decorations: obfuscated, bold, strikethrough, underlined, italic
+# Minecraft color names: black, dark_blue, dark_green, dark_aqua, dark_red, dark_purple, gold, gray, dark_gray, blue, green, aqua, red, light_purple, yellow, white
+#
+# Examples:
+# tags:
+#   tag_name:
+#     type: STYLE
+#     color: "red" # Can any named text color or a hex coded string (i.e. #abcdef) and or 6 letters that would be a hex.
+#     decorations: # You can supply a single decoration or multiple.
+#       - italic
+#       - bold
+#     font: "schatten:example"
+#   tag_2:
+#     type: INSERT
+#     value: "value to insert, supports minimessage strings."
+#   tag_2_closed:
+#     type: insert_closed
+#     value: "value to insert, supports minimessage strings. But this time it self closes."
+#   test2:
+#    type: PRE_PARSE # As apposed to insert or insert_closed this will be placed directly in the content BEFORE it is processed.
+#    value: "<white><font:schatten:ranks>0</font></white><blue> "
+#
+# Below, you can configure custom tags to be used in any of the ItemEditor commands.
+tags:
+  rank_red:
+    type: STYLE
+    color: "red"
+    decorations:
+      - italic
+      - bold
+    font: "schatten:example"

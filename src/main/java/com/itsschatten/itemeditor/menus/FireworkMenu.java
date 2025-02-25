@@ -1,16 +1,20 @@
 package com.itsschatten.itemeditor.menus;
 
-import com.itsschatten.yggdrasil.StringWrapUtils;
+import com.itsschatten.yggdrasil.WrapUtils;
+import com.itsschatten.yggdrasil.items.ItemCreator;
+import com.itsschatten.yggdrasil.items.ItemOptions;
+import com.itsschatten.yggdrasil.items.SkinTexture;
+import com.itsschatten.yggdrasil.items.UtilityItems;
+import com.itsschatten.yggdrasil.items.manipulators.SkullManipulator;
 import com.itsschatten.yggdrasil.menus.Menu;
 import com.itsschatten.yggdrasil.menus.buttons.AnimatedButton;
 import com.itsschatten.yggdrasil.menus.buttons.Button;
 import com.itsschatten.yggdrasil.menus.buttons.DynamicButton;
 import com.itsschatten.yggdrasil.menus.buttons.MenuTriggerButton;
-import com.itsschatten.yggdrasil.menus.types.PagedMenu;
+import com.itsschatten.yggdrasil.menus.types.PaginatedMenu;
 import com.itsschatten.yggdrasil.menus.types.interfaces.Animated;
 import com.itsschatten.yggdrasil.menus.utils.IMenuHolder;
 import com.itsschatten.yggdrasil.menus.utils.InventoryPosition;
-import com.itsschatten.yggdrasil.menus.utils.ItemCreator;
 import org.apache.commons.lang.WordUtils;
 import org.bukkit.DyeColor;
 import org.bukkit.FireworkEffect;
@@ -19,7 +23,6 @@ import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkEffectMeta;
 import org.bukkit.inventory.meta.FireworkMeta;
-import org.bukkit.profile.PlayerTextures;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
@@ -30,7 +33,7 @@ import java.util.*;
  * <br>
  * This menu does not allow custom hex colors.
  */
-public class FireworkMenu extends PagedMenu<FireworkEffect> implements Animated {
+public final class FireworkMenu extends PaginatedMenu<FireworkEffect> implements Animated {
 
     // The actual firework item, it's meta is updated when closing this menu.
     final ItemStack firework;
@@ -55,7 +58,7 @@ public class FireworkMenu extends PagedMenu<FireworkEffect> implements Animated 
 
         setTitle("Firework Effect Menu");
         setSize(54);
-        setRemoveNavIfCantGo(true);
+        setHideNav(true);
     }
 
     // Animates the menu.
@@ -81,7 +84,7 @@ public class FireworkMenu extends PagedMenu<FireworkEffect> implements Animated 
     // Draws non-functional items to the menu.
     @Override
     public void drawExtra() {
-        setRow(5, ItemCreator.makeFillerItem(Material.GRAY_STAINED_GLASS_PANE));
+        setRow(5, UtilityItems.makeFiller(Material.GRAY_STAINED_GLASS_PANE));
     }
 
     // Makes and registers buttons for this menu.
@@ -91,7 +94,7 @@ public class FireworkMenu extends PagedMenu<FireworkEffect> implements Animated 
         // This button is dynamic, it will update itself after 1 second after being clicked.
         final Button powerButton = new DynamicButton() {
             @Override
-            public void whenClicked(@NotNull IMenuHolder user, Menu menu, @NotNull ClickType type) {
+            public void onClicked(@NotNull IMenuHolder user, Menu menu, @NotNull ClickType type) {
                 // If we are right-clicking, we want to decrease the power, to a minimum of 0,
                 if (type.isRightClick()) {
                     meta.setPower(Math.max(meta.getPower() - 1, 0));
@@ -132,10 +135,8 @@ public class FireworkMenu extends PagedMenu<FireworkEffect> implements Animated 
                 return ItemCreator.of(Material.PLAYER_HEAD)
                         .name("<primary>Add Effect")
                         .lore(List.of("Adds a new firework effect to your firework."))
-                        .build()
-                        // UUID is set here to prevent the head flashing if the menu was animated.
-                        // Flashing is likely caused by the client caching a brand-new texture file every time because of a new UUID/name.
-                        .setSkull(UUID.fromString("934efd8c-1026-4ced-b56b-d9ba91221bbb"), "", "https://textures.minecraft.net/texture/b056bc1244fcff99344f12aba42ac23fee6ef6e3351d27d273c1572531f", PlayerTextures.SkinModel.CLASSIC);
+                        .manipulator(new SkullManipulator(new SkinTexture(UUID.fromString("934efd8c-1026-4ced-b56b-d9ba91221bbb"), "b056bc1244fcff99344f12aba42ac23fee6ef6e3351d27d273c1572531f")))
+                        .build();
             }
 
             @Contract("_, _ -> new")
@@ -154,10 +155,6 @@ public class FireworkMenu extends PagedMenu<FireworkEffect> implements Animated 
         // Creates an animated button that updates every second.
         // Clicking this button will reward the player with a firework with all the effects from this menu.
         final Button fireworkButton = new AnimatedButton() {
-            @Override
-            public long getUpdateTime() {
-                return 20L;
-            }
 
             @Override
             public ItemCreator createItem() {
@@ -207,7 +204,7 @@ public class FireworkMenu extends PagedMenu<FireworkEffect> implements Animated 
         return ItemCreator.of(itemStack)
                 .name("<primary>" + WordUtils.capitalizeFully(effect.getType().name().replace("_", " ")))
                 .lore(lore)
-                .hideTags(true)
+                .options(ItemOptions.HIDE_ALL_FLAGS)
                 .build();
     }
 
@@ -247,8 +244,8 @@ public class FireworkMenu extends PagedMenu<FireworkEffect> implements Animated 
                 <primary>Fades: <secondary>{fades}</secondary>
                 <primary>Effects: <secondary>{effects}</secondary>"""
                 .replace("{effects}", !effect.hasFlicker() && !effect.hasTrail() ? "<red>none" : (effect.hasFlicker() ? "flicker" + (effect.hasTrail() ? ", " : "") : "") + (effect.hasTrail() ? "trail" : ""))
-                .replace("{colors}", StringWrapUtils.wrap(colors, 35, "|"))
-                .replace("{fades}", fades.isEmpty() ? "<red>none" : StringWrapUtils.wrap(fades, 35, "|"));
+                .replace("{colors}", WrapUtils.wrap(colors, 35, "|"))
+                .replace("{fades}", fades.isEmpty() ? "<red>none" : WrapUtils.wrap(fades, 35, "|"));
     }
 
     // Called when clicking on a page item in the menu.

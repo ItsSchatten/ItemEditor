@@ -1,13 +1,13 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
 import com.itsschatten.itemeditor.commands.arguments.GenericEnumArgument;
+import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.entity.Player;
@@ -16,9 +16,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
-public class HideSubCommand extends BrigadierCommand {
+public final class HideSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
@@ -33,16 +33,16 @@ public class HideSubCommand extends BrigadierCommand {
 
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
-        return Commands.literal("hide")
-                .then(Commands.literal("-all")
+        return literal("hide")
+                .then(literal("-all")
                         .executes(context -> updateItemFlags(context, meta -> {
                             meta.addItemFlags(ItemFlag.values());
                             Utils.tell(context.getSource(), "<primary>Added all item flags to your item.");
                             return meta;
                         }))
                 )
-                .then(Commands.literal("-view").executes(this::handleView))
-                .then(Commands.argument("flag", GenericEnumArgument.generic(ItemFlag.class))
+                .then(literal("-view").executes(this::handleView))
+                .then(argument("flag", GenericEnumArgument.generic(ItemFlag.class))
                         .executes(context -> updateItemFlags(context, meta -> {
                             final ItemFlag flag = context.getArgument("flag", ItemFlag.class);
 
@@ -64,7 +64,7 @@ public class HideSubCommand extends BrigadierCommand {
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }
@@ -87,12 +87,12 @@ public class HideSubCommand extends BrigadierCommand {
         return 1;
     }
 
-    private int updateItemFlags(final @NotNull CommandContext<CommandSourceStack> context, final Function<ItemMeta, ItemMeta> function) {
+    private int updateItemFlags(final @NotNull CommandContext<CommandSourceStack> context, final UnaryOperator<ItemMeta> function) {
         final Player user = (Player) context.getSource().getSender();
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }

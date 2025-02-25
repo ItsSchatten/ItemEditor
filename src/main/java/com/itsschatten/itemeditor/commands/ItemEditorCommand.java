@@ -7,64 +7,92 @@ import com.itsschatten.yggdrasil.commands.BrigadierCommand;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.plugin.PluginDescriptionFile;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * The main command of the plugin.
  */
-public class ItemEditorCommand extends BrigadierCommand {
+public final class ItemEditorCommand extends BrigadierCommand {
 
-    // TODO: Tool sub command.
-    // TODO: Check and make sure that we've added a command for all things item manipulation.
+    // TODO: can break, can place on
 
     /**
      * Constructs the command.
      */
     public ItemEditorCommand() {
         super("The main command for ItemEditor.", List.of("itemedit", "ie"));
+        permission("itemeditor.command");
 
         addSubCommand(List.of(
                 new AmountSubCommand(),
                 new ArmorTrimSubCommand(),
                 new AttributeSubCommand(),
-                new BookSubCommand(),
                 new BannerSubCommand(),
+                new BookSubCommand(),
                 new BucketSubCommand(),
                 new ColorSubCommand(),
                 new CompassSubCommand(),
-                new CustomModelDataSubCommand(),
+                new ConsumableSubCommand(),
+                new ConvertSubCommand(),
+                new CooldownSubCommand(),
+                new DeathProtectionSubCommand(),
+                new DisplaySubCommand(),
+                new DebugSubCommand(),
                 new DurabilitySubCommand(),
+                new EnchantableSubCommand(),
                 new EnchantmentGlintSubCommand(),
                 new EnchantSubCommand(),
-                new FireResistantSubCommand(),
+                new EquipableSubCommand(),
                 new FireworkSubCommand(),
                 new FoodSubCommand(),
+                new GliderSubCommand(),
                 new GoatHornSubCommand(),
                 new HideSubCommand(),
                 new HideTooltipSubCommand(),
+                new IntangibleSubCommand(),
                 new ItemNameSubCommand(),
+                new JukeboxSubCommand(),
                 new LoreSubCommand(),
+                new MapSubCommand(),
+                new ModelDataSubCommand(),
+                new ModelSubCommand(),
+                new OminousSubCommand(),
+                new PotSubCommand(),
                 new PotionSubCommand(),
                 new RaritySubCommand(),
-                new DisplaySubCommand(),
+                new ResistantSubCommand(),
+                new RepairableSubCommand(),
                 new RepairCostSubCommand(),
                 new ShowSubCommand(),
                 new SkinSubCommand(),
+                new StewSubCommand(),
+                new TooltipSubCommand(),
+                new ToolSubCommand(),
                 new TypeSubCommand(),
                 new UnbreakableSubCommand()
         ));
     }
 
+    // Because of this requirement here, this command can never work for Command Blocks or Console.
+    // As such it is ALWAYS safe to assume that the sender of this command is a player.
+    @Contract(pure = true)
+    @Override
+    public @NotNull Predicate<CommandSourceStack> requirements() {
+        return (source) -> source.getSender() instanceof Player;
+    }
+
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
-        return Commands.literal("itemeditor")
-                .requires(context -> context.getSender() instanceof Player)
+        return literal("itemeditor")
                 .executes(context -> {
                     final PluginDescriptionFile pdf = Utils.getInstance().getDescription();
 

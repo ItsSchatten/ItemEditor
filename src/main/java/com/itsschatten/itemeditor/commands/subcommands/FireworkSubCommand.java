@@ -3,17 +3,18 @@ package com.itsschatten.itemeditor.commands.subcommands;
 import com.itsschatten.itemeditor.commands.arguments.GenericEnumArgument;
 import com.itsschatten.itemeditor.menus.FireworkMenu;
 import com.itsschatten.itemeditor.menus.FireworkStarMenu;
+import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
-import com.itsschatten.yggdrasil.StringWrapUtils;
+import com.itsschatten.yggdrasil.WrapUtils;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
+import com.itsschatten.yggdrasil.menus.MenuUtils;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -33,12 +34,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.IntStream;
 
-public class FireworkSubCommand extends BrigadierCommand {
+public final class FireworkSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
     @Override
     public @NotNull Component descriptionComponent() {
-        return StringUtil.color("<primary>/ie firework <secondary><menu|power|-clear|remove></secondary>").hoverEvent(StringUtil.color("""
+        return StringUtil.color("<primary>/ie firework <secondary><menu|power|-clear|add|remove></secondary>").hoverEvent(StringUtil.color("""
                 <primary>Manipulate a firework or firework star via a GUI or command.
                 <gray><i>Supply '""' if you wish to not have an argument in that slot, this does not work for colors.</i></gray>
                 \s
@@ -46,41 +47,57 @@ public class FireworkSubCommand extends BrigadierCommand {
                 ◼ <secondary><power><first></secondary> Set the power of a firework, fails if given a firework star.
                 ◼ <secondary><remove><first></secondary> Remove a specific effect on a firework or clears the effect on a firework star.
                 ◼ <secondary><-clear><first></secondary> Clear all firework effects from a firework or firework star.
-                ◼ <secondary><color:><first></secondary> Set the primary colors of the firework effect.
-                ◼ <secondary><fade:><first></secondary> Set the fade colors of the firework effect.
-                ◼ <secondary><shape:><first></secondary> Set the shape of the firework effect.
-                ◼ <secondary><effects:><first></secondary> Set the effects of the firework effect.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand("/ie firework "));
+                ◼ <secondary><add><first> <colors><required> <fades><optional> <shape><optional> <flicker><optional> <trail><optional></secondary> Add a firework effect.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand("/ie firework "));
     }
 
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
-        return Commands.literal("firework")
-                .then(Commands.literal("power")
-                        .then(Commands.argument("power", IntegerArgumentType.integer(0, 4))
+        return literal("firework")
+                .then(literal("power")
+                        .then(argument("power", IntegerArgumentType.integer(0, 4))
                                 .executes(context -> updateFireworkPower(context, IntegerArgumentType.getInteger(context, "power")))
                         )
                 )
-                .then(Commands.literal("-clear")
+                .then(literal("-clear")
                         .executes(this::clearEffects)
                 )
-                .then(Commands.literal("remove")
-                        .then(Commands.argument("id", IntegerArgumentType.integer(0))
+                .then(literal("remove")
+                        .then(argument("id", IntegerArgumentType.integer(0))
                                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(getEffectIds(context).stream().map(integer -> integer + "").toList(), builder))
                                 .executes(context -> removeEffect(context, IntegerArgumentType.getInteger(context, "id")))
                         )
                 )
-                .then(Commands.argument("colors", StringArgumentType.string())
-                        .then(Commands.argument("fades", StringArgumentType.string())
-                                .then(Commands.argument("shape", GenericEnumArgument.generic(FireworkEffect.Type.class))
-                                        .then(Commands.argument("flicker", BoolArgumentType.bool())
-                                                .then(Commands.argument("trail", BoolArgumentType.bool())
+                .then(literal("add")
+                        .then(argument("colors", StringArgumentType.string())
+                                .then(argument("fades", StringArgumentType.string())
+                                        .then(argument("shape", GenericEnumArgument.generic(FireworkEffect.Type.class))
+                                                .then(argument("flicker", BoolArgumentType.bool())
+                                                        .then(argument("trail", BoolArgumentType.bool())
+                                                                .executes(context -> {
+                                                                    final String colorString = StringArgumentType.getString(context, "colors");
+                                                                    final String fadesString = StringArgumentType.getString(context, "fades");
+                                                                    final FireworkEffect.Type type = context.getArgument("shape", FireworkEffect.Type.class);
+
+                                                                    final boolean flicker = BoolArgumentType.getBool(context, "flicker");
+                                                                    final boolean trail = BoolArgumentType.getBool(context, "trail");
+
+                                                                    final List<Color> colors = parseColors(context, colorString);
+                                                                    final List<Color> fades = parseColors(context, fadesString);
+
+                                                                    if (colors.isEmpty()) {
+                                                                        Utils.tell(context.getSource(), "<red>You must provide one color.");
+                                                                        return 0;
+                                                                    }
+
+                                                                    return addFireWorkEffect(context, colors, fades, type, flicker, trail);
+                                                                })
+                                                        )
                                                         .executes(context -> {
                                                             final String colorString = StringArgumentType.getString(context, "colors");
                                                             final String fadesString = StringArgumentType.getString(context, "fades");
                                                             final FireworkEffect.Type type = context.getArgument("shape", FireworkEffect.Type.class);
 
                                                             final boolean flicker = BoolArgumentType.getBool(context, "flicker");
-                                                            final boolean trail = BoolArgumentType.getBool(context, "trail");
 
                                                             final List<Color> colors = parseColors(context, colorString);
                                                             final List<Color> fades = parseColors(context, fadesString);
@@ -90,15 +107,13 @@ public class FireworkSubCommand extends BrigadierCommand {
                                                                 return 0;
                                                             }
 
-                                                            return addFireWorkEffect(context, colors, fades, type, flicker, trail);
+                                                            return addFireWorkEffect(context, colors, fades, type, flicker, false);
                                                         })
                                                 )
                                                 .executes(context -> {
                                                     final String colorString = StringArgumentType.getString(context, "colors");
                                                     final String fadesString = StringArgumentType.getString(context, "fades");
                                                     final FireworkEffect.Type type = context.getArgument("shape", FireworkEffect.Type.class);
-
-                                                    final boolean flicker = BoolArgumentType.getBool(context, "flicker");
 
                                                     final List<Color> colors = parseColors(context, colorString);
                                                     final List<Color> fades = parseColors(context, fadesString);
@@ -108,13 +123,22 @@ public class FireworkSubCommand extends BrigadierCommand {
                                                         return 0;
                                                     }
 
-                                                    return addFireWorkEffect(context, colors, fades, type, flicker, false);
+                                                    return addFireWorkEffect(context, colors, fades, type, false, false);
                                                 })
                                         )
+                                        .suggests((context, builder) -> {
+                                            final List<String> options = new ArrayList<>();
+                                            final String prefix = builder.getRemainingLowerCase();
+
+                                            for (final DyeColor color : DyeColor.values()) {
+                                                options.add(prefix + color.name().toLowerCase() + ",");
+                                            }
+
+                                            return SharedSuggestionProvider.suggest(options, builder);
+                                        })
                                         .executes(context -> {
                                             final String colorString = StringArgumentType.getString(context, "colors");
                                             final String fadesString = StringArgumentType.getString(context, "fades");
-                                            final FireworkEffect.Type type = context.getArgument("shape", FireworkEffect.Type.class);
 
                                             final List<Color> colors = parseColors(context, colorString);
                                             final List<Color> fades = parseColors(context, fadesString);
@@ -124,7 +148,7 @@ public class FireworkSubCommand extends BrigadierCommand {
                                                 return 0;
                                             }
 
-                                            return addFireWorkEffect(context, colors, fades, type, false, false);
+                                            return addFireWorkEffect(context, colors, fades, FireworkEffect.Type.BALL, false, false);
                                         })
                                 )
                                 .suggests((context, builder) -> {
@@ -139,42 +163,18 @@ public class FireworkSubCommand extends BrigadierCommand {
                                 })
                                 .executes(context -> {
                                     final String colorString = StringArgumentType.getString(context, "colors");
-                                    final String fadesString = StringArgumentType.getString(context, "fades");
-
                                     final List<Color> colors = parseColors(context, colorString);
-                                    final List<Color> fades = parseColors(context, fadesString);
 
                                     if (colors.isEmpty()) {
                                         Utils.tell(context.getSource(), "<red>You must provide one color.");
                                         return 0;
                                     }
 
-                                    return addFireWorkEffect(context, colors, fades, FireworkEffect.Type.BALL, false, false);
+                                    return addFireWorkEffect(context, colors, Collections.emptyList(), FireworkEffect.Type.BALL, false, false);
                                 })
                         )
-                        .suggests((context, builder) -> {
-                            final List<String> options = new ArrayList<>();
-                            final String prefix = builder.getRemainingLowerCase();
-
-                            for (final DyeColor color : DyeColor.values()) {
-                                options.add(prefix + color.name().toLowerCase() + ",");
-                            }
-
-                            return SharedSuggestionProvider.suggest(options, builder);
-                        })
-                        .executes(context -> {
-                            final String colorString = StringArgumentType.getString(context, "colors");
-                            final List<Color> colors = parseColors(context, colorString);
-
-                            if (colors.isEmpty()) {
-                                Utils.tell(context.getSource(), "<red>You must provide one color.");
-                                return 0;
-                            }
-
-                            return addFireWorkEffect(context, colors, Collections.emptyList(), FireworkEffect.Type.BALL, false, false);
-                        })
                 )
-                .then(Commands.literal("menu")
+                .then(literal("menu")
                         .executes(this::openMenu)
                 )
                 .executes(this::openMenu);
@@ -210,7 +210,7 @@ public class FireworkSubCommand extends BrigadierCommand {
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             return Collections.emptyList();
         }
 
@@ -231,7 +231,7 @@ public class FireworkSubCommand extends BrigadierCommand {
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }
@@ -260,7 +260,7 @@ public class FireworkSubCommand extends BrigadierCommand {
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }
@@ -287,7 +287,7 @@ public class FireworkSubCommand extends BrigadierCommand {
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }
@@ -320,7 +320,7 @@ public class FireworkSubCommand extends BrigadierCommand {
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }
@@ -342,14 +342,14 @@ public class FireworkSubCommand extends BrigadierCommand {
 
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
-        if (stack.isEmpty()) {
+        if (ItemValidator.isInvalid(stack)) {
             Utils.tell(user, "<red>You need to be holding an item in your hand.");
             return 0;
         }
 
         if (!(stack.getItemMeta() instanceof final FireworkMeta meta)) {
             if (stack.getItemMeta() instanceof final FireworkEffectMeta fireworkEffectMeta) {
-                new FireworkStarMenu(stack, fireworkEffectMeta).displayTo(Utils.getManager().getMenuHolder(user));
+                new FireworkStarMenu(stack, fireworkEffectMeta).displayTo(MenuUtils.getManager().getMenuHolder(user));
                 return 1;
             }
 
@@ -357,7 +357,7 @@ public class FireworkSubCommand extends BrigadierCommand {
             return 0;
         }
 
-        new FireworkMenu(stack, meta).displayTo(Utils.getManager().getMenuHolder(user));
+        new FireworkMenu(stack, meta).displayTo(MenuUtils.getManager().getMenuHolder(user));
         return 1;
     }
 
@@ -426,8 +426,8 @@ public class FireworkSubCommand extends BrigadierCommand {
                 Fades: <secondary>{fades}</secondary>"""
                 .replace("{shape}", effect.getType().name().toLowerCase().replace("_", " "))
                 .replace("{effects}", (effect.hasFlicker() ? "flicker" + (effect.hasTrail() ? ", " : "") : "") + (effect.hasTrail() ? "trail" : ""))
-                .replace("{colors}", StringWrapUtils.wrap(colors, 35, "|"))
-                .replace("{fades}", StringWrapUtils.wrap(fades, 35, "|"))
+                .replace("{colors}", WrapUtils.wrap(colors, 35, "|"))
+                .replace("{fades}", WrapUtils.wrap(fades, 35, "|"))
                 ;
     }
 }
