@@ -12,22 +12,27 @@ import com.itsschatten.yggdrasil.items.UtilityItems;
 import com.itsschatten.yggdrasil.items.manipulators.ColorManipulator;
 import com.itsschatten.yggdrasil.items.manipulators.SkullManipulator;
 import com.itsschatten.yggdrasil.menus.Menu;
+import com.itsschatten.yggdrasil.menus.buttons.Button;
 import com.itsschatten.yggdrasil.menus.buttons.Buttons;
 import com.itsschatten.yggdrasil.menus.buttons.premade.ReturnButton;
 import com.itsschatten.yggdrasil.menus.types.PaginatedMenu;
-import com.itsschatten.yggdrasil.menus.utils.IMenuHolder;
-import org.apache.commons.lang.math.NumberUtils;
+import com.itsschatten.yggdrasil.menus.utils.InventorySize;
+import com.itsschatten.yggdrasil.menus.utils.MenuHolder;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.potion.PotionEffect;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
-public class EffectListMenu extends PaginatedMenu<PotionEffect> {
+public final class EffectListMenu extends PaginatedMenu<MenuHolder, PotionEffect> {
 
     final List<PotionEffect> effects;
 
@@ -35,34 +40,32 @@ public class EffectListMenu extends PaginatedMenu<PotionEffect> {
 
     private boolean configuring = false;
 
-    public EffectListMenu(Menu parent, List<PotionEffect> pages) {
-        super(parent, pages);
+    public EffectListMenu(Menu<MenuHolder> parent, List<PotionEffect> pages) {
+        super(parent, "Effect List", InventorySize.FULL, pages);
 
         effects = new ArrayList<>(pages);
-
-        setSize(54);
-        setTitle("Effect List");
         setHideNav(true);
     }
 
     @Override
-    public void postDisplay() {
+    public void postDisplay(MenuHolder holder) {
         refresh();
     }
 
     @Override
-    public void onOpen(IMenuHolder user) {
+    public void onOpen(MenuHolder holder) {
         cleanUpdatePages(effects);
     }
 
     @Override
     public void drawExtra() {
-        setRow(getInventory().getRows() - 1, UtilityItems.makeFiller(Material.GRAY_STAINED_GLASS_PANE));
+        setRow(rows() - 1, UtilityItems.makeFiller(Material.GRAY_STAINED_GLASS_PANE));
     }
 
+    @Contract(" -> new")
     @Override
-    public void makeButtons() {
-        registerButtons(Buttons.menuTrigger()
+    public @NotNull @Unmodifiable List<Button<MenuHolder>> makeButtons() {
+        return List.of(Buttons.menuTrigger()
                         .item(ItemCreator.of(Material.PLAYER_HEAD).name("<green>New Effect").lore("Add a new effect.").manipulator(new SkullManipulator(SkinTexture.of(UUID.fromString("934efd8c-1026-4ced-b56b-d9ba91221bbb"), "b056bc1244fcff99344f12aba42ac23fee6ef6e3351d27d273c1572531f"))).supplier())
                         .menu((holder, clickType) -> new EffectCreationMenu(this))
                         .position(5, 1)
@@ -88,8 +91,8 @@ public class EffectListMenu extends PaginatedMenu<PotionEffect> {
     }
 
     @Override
-    public @Nullable ReturnButton getReturnButton() {
-        return Objects.requireNonNull(super.getReturnButton()).toBuilder().position(getInventory().getRows() - 1, 0).build();
+    public @Nullable ReturnButton.ReturnButtonBuilder<MenuHolder> getReturnButton() {
+        return Objects.requireNonNull(super.getReturnButton()).position(rows() - 1, 0);
     }
 
     @Override
@@ -99,20 +102,26 @@ public class EffectListMenu extends PaginatedMenu<PotionEffect> {
                         "",
                         "<secondary>" + StringHelper.potionEffectToString(object)
                 )
-                .options(ItemOptions.HIDE_ALL_FLAGS)
+                .options(ItemOptions.builder().hiddenComponent(DataComponentTypes.POTION_CONTENTS))
                 .manipulator(new ColorManipulator(object.getType().getColor())).build();
     }
 
     @Override
-    public void onClickPageItem(IMenuHolder user, PotionEffect object, ClickType click) {
+    public void onClickPageItem(MenuHolder user, PotionEffect object, ClickType click) {
         effects.remove(object);
-        updatePages(effects);
-        refreshPage();
+        removeValue(object);
     }
 
     @Override
-    public void onClose(IMenuHolder user) {
-        if ((!isOpeningNew() && !configuring) && getParent() != null) {
+    public void onSwitch(MenuHolder user) {
+        if ((!configuring) && getParent() instanceof ConsumableEffectCreateMenu menu) {
+            menu.options = new ConsumeEffectOptions.ApplyStatusEffectsOptions(effects, probability);
+        }
+    }
+
+    @Override
+    public void onClose(MenuHolder user) {
+        if (!configuring && getParent() != null) {
             // A tick must delay this. Otherwise, the close call will be called continuously.
             Bukkit.getScheduler().runTaskLater(Utils.getInstance(), () -> getParent().switchMenu(user, this), 1L);
         }

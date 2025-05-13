@@ -730,7 +730,7 @@ public final class LoreSubCommand extends BrigadierCommand {
         Utils.tell(context.getSource(), StringUtil.color("<gradient:#D8D8F6:#978897>Your clipboard contents:</gradient>"));
 
         final UUID uuid = context.getSource().getSender().get(Identity.UUID).orElse(null);
-        if (uuid == null || (clipboard.get(uuid) != null || clipboard.get(uuid).isEmpty())) {
+        if (uuid == null || (clipboard.get(uuid) == null || clipboard.get(uuid).isEmpty())) {
             Utils.tell(context.getSource(), "<red>You don't have any lore copied.");
             return 0;
         }

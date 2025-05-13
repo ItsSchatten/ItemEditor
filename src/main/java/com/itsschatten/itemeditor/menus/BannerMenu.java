@@ -11,20 +11,22 @@ import com.itsschatten.yggdrasil.menus.buttons.Button;
 import com.itsschatten.yggdrasil.menus.buttons.MenuTriggerButton;
 import com.itsschatten.yggdrasil.menus.types.PaginatedMenu;
 import com.itsschatten.yggdrasil.menus.types.interfaces.Animated;
-import com.itsschatten.yggdrasil.menus.utils.IMenuHolder;
 import com.itsschatten.yggdrasil.menus.utils.InventoryPosition;
+import com.itsschatten.yggdrasil.menus.utils.InventorySize;
+import com.itsschatten.yggdrasil.menus.utils.MenuHolder;
+import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
-import org.apache.commons.lang.WordUtils;
+import org.apache.commons.text.WordUtils;
 import org.bukkit.DyeColor;
 import org.bukkit.Material;
 import org.bukkit.block.banner.Pattern;
 import org.bukkit.event.inventory.ClickType;
-import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BannerMeta;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Unmodifiable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +36,7 @@ import java.util.UUID;
 /**
  * Menu responsible for adding, removing, and editing of Banner's patterns.
  */
-public final class BannerMenu extends PaginatedMenu<Pattern> implements Animated {
+public final class BannerMenu extends PaginatedMenu<MenuHolder, Pattern> implements Animated {
 
     // The list of patterns for the banner.
     final List<Pattern> patterns;
@@ -52,30 +54,28 @@ public final class BannerMenu extends PaginatedMenu<Pattern> implements Animated
      * @param meta   The {@link BannerMeta item meta} of the banner item.
      */
     public BannerMenu(final ItemStack banner, final @NotNull BannerMeta meta) {
-        super(null, meta.getPatterns());
+        super(null, "Banner Editor", InventorySize.FULL, meta.getPatterns());
 
         this.patterns = meta.getPatterns();
 
         this.banner = banner;
         this.meta = meta;
 
-        setSize(54);
-        setTitle("Banner Editor");
         setHideNav(true);
     }
 
     // Updates the list of items to page, and refreshes the items.
     @Override
     public void animate() {
-        cleanUpdatePages(patterns);
+        updatePages(patterns);
     }
 
     // Creates the buttons for the menu.
     @Override
-    public void makeButtons() {
+    public @NotNull @Unmodifiable List<Button<MenuHolder>> makeButtons() {
         // Button that will open the BannerPatternMenu.
         // http://textures.minecraft.net/texture/b056bc1244fcff99344f12aba42ac23fee6ef6e3351d27d273c1572531f
-        final Button addPatternButton = new MenuTriggerButton() {
+        final Button<MenuHolder> addPatternButton = new MenuTriggerButton<>() {
             @Override
             public @NotNull ItemCreator createItem() {
                 return ItemCreator.of(Material.PLAYER_HEAD)
@@ -87,7 +87,7 @@ public final class BannerMenu extends PaginatedMenu<Pattern> implements Animated
 
             @Contract("_, _ -> new")
             @Override
-            public @NotNull Menu getMenu(IMenuHolder user, ClickType type) {
+            public @NotNull Menu<MenuHolder> getMenu(MenuHolder user, ClickType type) {
                 return new BannerPatternMenu(BannerMenu.this, null);
             }
 
@@ -99,7 +99,7 @@ public final class BannerMenu extends PaginatedMenu<Pattern> implements Animated
         };
 
         // The Banner Button, clicking this will reward the player with a copy of the banner they are creating.
-        final Button bannerButton = new AnimatedButton() {
+        final Button<MenuHolder> bannerButton = new AnimatedButton<>() {
 
             @Override
             public ItemCreator createItem() {
@@ -110,17 +110,17 @@ public final class BannerMenu extends PaginatedMenu<Pattern> implements Animated
 
                 return ItemCreator.of(bannerInner).name("<primary>Created Banner")
                         .lore(List.of("<yellow>Click <gray>to get a copy of this banner."))
-                        .options(ItemOptions.builder().itemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP).build()).build();
+                        .options(ItemOptions.builder().hiddenComponent(DataComponentTypes.BANNER_PATTERNS).build()).build();
             }
 
             @Override
-            public void onClicked(@NotNull IMenuHolder user, Menu menu, ClickType click) {
+            public void onClicked(@NotNull MenuHolder user, Menu menu, ClickType click) {
                 final ItemStack bannerInner = new ItemStack(banner.getType());
                 final BannerMeta bannerMeta = (BannerMeta) bannerInner.getItemMeta();
                 bannerMeta.setPatterns(patterns);
                 bannerInner.setItemMeta(bannerMeta);
 
-                user.getBase().getInventory().addItem(bannerInner);
+                user.player().getInventory().addItem(bannerInner);
             }
 
             @Contract(" -> new")
@@ -131,7 +131,7 @@ public final class BannerMenu extends PaginatedMenu<Pattern> implements Animated
         };
 
         // Registers the buttons to this menu.
-        registerButtons(bannerButton, addPatternButton);
+        return List.of(bannerButton, addPatternButton);
     }
 
     // Draws non-functional items to the menu.
@@ -142,13 +142,9 @@ public final class BannerMenu extends PaginatedMenu<Pattern> implements Animated
 
     // Handles this when closing this menu.
     @Override
-    public void onClose(IMenuHolder user) {
-        // Detect if we are switching menus.
-        // If we are not switching, go ahead and update the banner's meta.
-        if (!this.isOpeningNew()) {
-            meta.setPatterns(patterns);
-            banner.setItemMeta(meta);
-        }
+    public void onClose(MenuHolder user) {
+        meta.setPatterns(patterns);
+        banner.setItemMeta(meta);
     }
 
     // Get the placeable positions for the page items.
@@ -176,7 +172,7 @@ public final class BannerMenu extends PaginatedMenu<Pattern> implements Animated
         final String bannerText = Objects.requireNonNull(RegistryAccess.registryAccess().getRegistry(RegistryKey.BANNER_PATTERN).getKey(object.getPattern())).asString();
 
         return ItemCreator.of(convertBanner).name("<primary>" + WordUtils.capitalizeFully(bannerText.substring(bannerText.indexOf(":") + 1).replace("_", " ")))
-                .options(ItemOptions.builder().itemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP).build())
+                .options(ItemOptions.builder().hiddenComponent(DataComponentTypes.BANNER_PATTERNS).build())
                 .lore(List.of("<info>Full key: " + bannerText, "",
                         "<yellow>Left-Click <gray>to edit this pattern.",
                         "<yellow>Right-Click <gray> to remove this pattern.")).build();
@@ -184,10 +180,11 @@ public final class BannerMenu extends PaginatedMenu<Pattern> implements Animated
 
     // Handles clicking a page item.
     @Override
-    public void onClickPageItem(IMenuHolder user, @NotNull Pattern pattern, @NotNull ClickType click) {
+    public void onClickPageItem(MenuHolder user, @NotNull Pattern pattern, @NotNull ClickType click) {
         // If we are right-clicking, remove the pattern from the list.
         if (click.isRightClick()) {
             patterns.remove(pattern);
+            removeValue(pattern);
         } else {
             // Not right-clicking, we want to edit the pattern.
             // We can safely assume that a record, click, and user is not null.

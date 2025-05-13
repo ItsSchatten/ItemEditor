@@ -1,6 +1,6 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
-import com.itsschatten.itemeditor.commands.arguments.GenericEnumArgument;
+import com.itsschatten.yggdrasil.commands.arguments.GenericEnumArgument;
 import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
@@ -63,7 +63,8 @@ public final class PotSubCommand extends BrigadierCommand {
                                     // While this doesn't DENY the use of other materials, this heavily incentivizes the use of just sherds and brick.
                                     // However, below we deny the use of any material other than sherds and a brick.
                                     Registry.ITEM.stream().forEach(type -> {
-                                        if (type.asMaterial() == Material.BRICK || Objects.requireNonNull(type.asMaterial()).key().asMinimalString().contains("sherd")) {
+                                        final String material = Objects.requireNonNull(type.asMaterial()).key().asMinimalString().toLowerCase();
+                                        if ((type.asMaterial() == Material.BRICK || material.contains("sherd")) && material.contains(builder.getRemainingLowerCase())) {
                                             builder.suggest(type.asMaterial().key().asString());
                                         }
                                     });
@@ -94,7 +95,7 @@ public final class PotSubCommand extends BrigadierCommand {
                                     if (source == Material.BRICK || source.key().asMinimalString().contains("sherd")) {
                                         switch (side) {
                                             case ALL -> decorations.front(type).back(type).left(type).right(type);
-                                            case FONT -> decorations.front(type);
+                                            case FRONT -> decorations.front(type);
                                             case BACK -> decorations.back(type);
                                             case LEFT -> decorations.left(type);
                                             case RIGHT -> decorations.right(type);
@@ -118,7 +119,7 @@ public final class PotSubCommand extends BrigadierCommand {
 
     private enum Sides {
         ALL,
-        FONT,
+        FRONT,
         BACK,
         LEFT,
         RIGHT

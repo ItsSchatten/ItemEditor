@@ -9,21 +9,25 @@ import com.itsschatten.yggdrasil.items.ItemCreator;
 import com.itsschatten.yggdrasil.items.ItemOptions;
 import com.itsschatten.yggdrasil.items.UtilityItems;
 import com.itsschatten.yggdrasil.items.manipulators.ColorManipulator;
+import com.itsschatten.yggdrasil.menus.buttons.Button;
 import com.itsschatten.yggdrasil.menus.buttons.Buttons;
 import com.itsschatten.yggdrasil.menus.buttons.premade.PageNavigationButton;
 import com.itsschatten.yggdrasil.menus.buttons.premade.ReturnButton;
 import com.itsschatten.yggdrasil.menus.types.PageMenu;
-import com.itsschatten.yggdrasil.menus.utils.IMenuHolder;
 import com.itsschatten.yggdrasil.menus.utils.InventoryPosition;
+import com.itsschatten.yggdrasil.menus.utils.InventorySize;
+import com.itsschatten.yggdrasil.menus.utils.MenuHolder;
 import com.itsschatten.yggdrasil.menus.utils.MenuPage;
+import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.consumable.ConsumeEffect;
 import io.papermc.paper.registry.RegistryKey;
 import io.papermc.paper.registry.set.RegistrySet;
-import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
@@ -34,7 +38,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
-public final class ConsumableEffectCreateMenu extends PageMenu {
+public final class ConsumableEffectCreateMenu extends PageMenu<MenuHolder> {
 
     private final ConsumableEffectMenu effectsMenu;
 
@@ -43,18 +47,21 @@ public final class ConsumableEffectCreateMenu extends PageMenu {
     private boolean configuring;
 
     public ConsumableEffectCreateMenu(@NotNull ConsumableEffectMenu parent) {
-        super(parent, UtilityItems.makeFiller(Material.GRAY_STAINED_GLASS_PANE));
+        super(parent, "Effect Creation Menu", InventorySize.FULL, UtilityItems.makeFiller(Material.GRAY_STAINED_GLASS_PANE));
 
         this.effectsMenu = parent;
-
-        setTitle("Effect Creation Menu");
-        setSize(54);
     }
 
     @Override
-    public void postDisplay() {
+    public void postDisplay(MenuHolder holder) {
         // Called to update the page's view to ensure states are properly shown.
         refreshPage();
+    }
+
+    @Contract(pure = true)
+    @Override
+    public @NotNull @Unmodifiable List<Button<MenuHolder>> makeButtons() {
+        return List.of();
     }
 
     @Override
@@ -64,7 +71,7 @@ public final class ConsumableEffectCreateMenu extends PageMenu {
     }
 
     @Override
-    public @NotNull @Unmodifiable List<MenuPage> makePages() {
+    public @NotNull @Unmodifiable List<MenuPage<MenuHolder>> makePages() {
         final List<String> lore = new ArrayList<>();
         if (options instanceof final ConsumeEffectOptions.ApplyStatusEffectsOptions apply) {
             final List<PotionEffect> effects = new ArrayList<>(apply.effects());
@@ -94,7 +101,7 @@ public final class ConsumableEffectCreateMenu extends PageMenu {
                         .navButton(PageNavigationButton.builder()
                                 .runnable((holder, menu, click) -> options = null)
                                 .pageNumber(1)
-                                .item((page) -> ItemCreator.of(Material.POTION).display("<light_purple>Apply Status Effects").lore("<secondary>When eaten your consumable can apply", "<secondary>a list of potion effects to the consumer.").options(ItemOptions.HIDE_ALL_FLAGS.toBuilder().glow(page == 1).build()).manipulator(new ColorManipulator("#ff55ff")).supplier())
+                                .item((page) -> ItemCreator.of(Material.POTION).display("<light_purple>Apply Status Effects").lore("<secondary>When eaten your consumable can apply", "<secondary>a list of potion effects to the consumer.").options(ItemOptions.builder().hiddenComponent(DataComponentTypes.POTION_CONTENTS).glow(page == 1).build()).manipulator(new ColorManipulator("#ff55ff")).supplier())
                                 .position(0, 0).build())
                         .button(Buttons.menuTrigger()
                                 .menu((holder, clickType) -> new EffectListMenu(this, options instanceof final ConsumeEffectOptions.ApplyStatusEffectsOptions apply ? apply.effects() : List.of()))
@@ -184,18 +191,18 @@ public final class ConsumableEffectCreateMenu extends PageMenu {
     }
 
     @Override
-    public @Nullable ReturnButton getReturnButton() {
-        return Objects.requireNonNull(super.getReturnButton()).toBuilder().position(InventoryPosition.of(getInventory().getRows() - 1, 0)).build();
+    public @Nullable ReturnButton.ReturnButtonBuilder<MenuHolder> getReturnButton() {
+        return Objects.requireNonNull(super.getReturnButton()).position(InventoryPosition.of(rows() - 1, 0));
     }
 
     @Override
-    public void beforeReturn() {
+    public void beforeReturn(MenuHolder holder) {
         passOptions();
     }
 
     @Override
-    public void onClose(IMenuHolder user) {
-        if (!isOpeningNew() && !configuring) {
+    public void onClose(MenuHolder user) {
+        if (!configuring) {
             passOptions();
 
             // A tick must delay this. Otherwise, the close call will be called continuously.

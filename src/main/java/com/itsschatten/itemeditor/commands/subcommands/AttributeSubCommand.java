@@ -2,11 +2,11 @@ package com.itsschatten.itemeditor.commands.subcommands;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.itsschatten.itemeditor.commands.arguments.EquipmentSlotArgument;
-import com.itsschatten.itemeditor.commands.arguments.GenericEnumArgument;
 import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
+import com.itsschatten.yggdrasil.commands.arguments.GenericEnumArgument;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;

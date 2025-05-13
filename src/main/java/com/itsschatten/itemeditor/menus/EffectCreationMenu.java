@@ -8,24 +8,30 @@ import com.itsschatten.yggdrasil.anvilgui.interfaces.Response;
 import com.itsschatten.yggdrasil.items.ItemCreator;
 import com.itsschatten.yggdrasil.items.ItemOptions;
 import com.itsschatten.yggdrasil.items.manipulators.ColorManipulator;
+import com.itsschatten.yggdrasil.menus.buttons.Button;
 import com.itsschatten.yggdrasil.menus.buttons.Buttons;
 import com.itsschatten.yggdrasil.menus.buttons.premade.ReturnButton;
 import com.itsschatten.yggdrasil.menus.types.StandardMenu;
-import com.itsschatten.yggdrasil.menus.utils.IMenuHolder;
-import org.apache.commons.lang.math.NumberUtils;
+import com.itsschatten.yggdrasil.menus.utils.MenuHolder;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Keyed;
 import org.bukkit.Material;
 import org.bukkit.Registry;
 import org.bukkit.potion.PotionEffectType;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
-public class EffectCreationMenu extends StandardMenu {
+public final class EffectCreationMenu extends StandardMenu<MenuHolder> {
 
     final EffectListMenu parent;
 
@@ -41,31 +47,29 @@ public class EffectCreationMenu extends StandardMenu {
     private boolean configuring = false;
 
     public EffectCreationMenu(EffectListMenu parent) {
-        super(parent);
+        super(parent, "Creation Potion Effect", 36);
         this.parent = parent;
-
-        setTitle("Create Potion Effect");
-        setSize(36);
     }
 
     @Override
-    public @Nullable ReturnButton getReturnButton() {
-        return Objects.requireNonNull(super.getReturnButton()).toBuilder().position(getInventory().getRows() - 1, 0).build();
+    public @Nullable ReturnButton.ReturnButtonBuilder<MenuHolder> getReturnButton() {
+        return Objects.requireNonNull(super.getReturnButton()).position(rows() - 1, 0);
     }
 
     @Override
-    public void postDisplay() {
+    public void postDisplay(MenuHolder holder) {
         refresh();
     }
 
+    @Contract(" -> new")
     @Override
-    public void makeButtons() {
-        registerButtons(
+    public @NotNull @Unmodifiable List<Button<MenuHolder>> makeButtons() {
+        return List.of(
                 Buttons.menuTrigger()
                         .item(ItemCreator.of(Material.POTION).display("<primary>Potion Type: <secondary>" + effect.key().asMinimalString())
                                 .lore("<yellow>Click <gray>to change the effect type!")
                                 .manipulator(new ColorManipulator(effect.getColor()))
-                                .options(ItemOptions.HIDE_ALL_FLAGS)
+                                .options(ItemOptions.builder().hiddenComponent(DataComponentTypes.POTION_CONTENTS))
                                 .supplier())
                         .position(1, 2)
                         .menu((holder, clickType) -> new EffectTypeListMenu(this, Lists.newArrayList(Registry.EFFECT).stream().sorted(Comparator.comparing(Keyed::key)).toList()))
@@ -159,8 +163,13 @@ public class EffectCreationMenu extends StandardMenu {
     }
 
     @Override
-    public void onClose(IMenuHolder user) {
-        if (!isOpeningNew() && !configuring) {
+    public void onSwitch(MenuHolder user) {
+        pass();
+    }
+
+    @Override
+    public void onClose(MenuHolder user) {
+        if (!configuring) {
             pass();
             // A tick must delay this. Otherwise, the close call will be called continuously.
             Bukkit.getScheduler().runTaskLater(Utils.getInstance(), () -> parent.switchMenu(user, this), 1L);
@@ -168,7 +177,7 @@ public class EffectCreationMenu extends StandardMenu {
     }
 
     @Override
-    public void beforeReturn() {
+    public void beforeReturn(MenuHolder holder) {
         pass();
     }
 

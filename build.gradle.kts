@@ -1,16 +1,15 @@
 plugins {
     java
-    `maven-publish`
     idea
 
     // Use Mojang mappings and a few other PaperAPI QOL.
-    id("io.papermc.paperweight.userdev") version "2.0.0-beta.10"
+    id("io.papermc.paperweight.userdev") version "2.0.0-beta.16"
 
     // Automatic lombok and delombok configuration
-    id("io.freefair.lombok") version "8.6"
+    id("io.freefair.lombok") version "8.13.1"
 
     // Shade libraries into one "UberJar"
-    id("com.gradleup.shadow") version "8.3.0"
+    id("com.gradleup.shadow") version "9.0.0-beta11"
 }
 
 // Used to configure which "path" we are compiling.
@@ -28,9 +27,6 @@ java.sourceCompatibility = JavaVersion.VERSION_21
 paperweight.reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.MOJANG_PRODUCTION
 
 repositories {
-    mavenCentral()
-    mavenLocal()
-
     // PaperMC.
     maven("https://repo.papermc.io/repository/maven-public/")
 
@@ -38,14 +34,15 @@ repositories {
     maven {
         url = uri("https://repo.extendedclip.com/releases/")
     }
+
+    mavenCentral()
+    mavenLocal()
 }
 
 dependencies {
-    paperweight.paperDevBundle("1.21.4-R0.1-SNAPSHOT")
+    paperweight.paperDevBundle("1.21.5-R0.1-SNAPSHOT")
 
-    implementation(project(":API"))
-
-    implementation(platform("com.itsschatten:Yggdrasil-bom:1.0.1"))
+    implementation(platform("com.itsschatten:Yggdrasil-bom:1.0.2"))
     implementation("com.itsschatten:Yggdrasil") {
         isChanging = true
     }
@@ -56,8 +53,9 @@ dependencies {
         isChanging = true
     }
 
-    compileOnly("org.projectlombok:lombok:1.18.34")
-    annotationProcessor("org.projectlombok:lombok:1.18.34")
+    compileOnly("com.itsschatten:Utilities-API:0.0.0-SNAPSHOT")
+
+    implementation("org.apache.commons:commons-text:1.13.1")
 
     testImplementation(platform("org.junit:junit-bom:5.11.0-M1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -105,22 +103,6 @@ tasks {
         useJUnitPlatform()
     }
 }
-
-subprojects {
-    plugins.apply("java")
-    plugins.apply("maven-publish")
-
-    publishing {
-        publications {
-            create<MavenPublication>("maven") {
-                from(components["java"])
-                group = "$group"
-                artifactId = rootProject.name + (if (project.name.equals("api", true)) "-" + project.name else "")
-            }
-        }
-    }
-}
-
 
 java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(21))

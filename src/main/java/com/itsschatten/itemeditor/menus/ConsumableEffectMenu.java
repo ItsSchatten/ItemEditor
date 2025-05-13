@@ -9,10 +9,12 @@ import com.itsschatten.yggdrasil.items.UtilityItems;
 import com.itsschatten.yggdrasil.items.manipulators.ColorManipulator;
 import com.itsschatten.yggdrasil.items.manipulators.SkullManipulator;
 import com.itsschatten.yggdrasil.menus.Menu;
+import com.itsschatten.yggdrasil.menus.buttons.Button;
 import com.itsschatten.yggdrasil.menus.buttons.MenuTriggerButton;
 import com.itsschatten.yggdrasil.menus.types.PaginatedMenu;
-import com.itsschatten.yggdrasil.menus.utils.IMenuHolder;
 import com.itsschatten.yggdrasil.menus.utils.InventoryPosition;
+import com.itsschatten.yggdrasil.menus.utils.InventorySize;
+import com.itsschatten.yggdrasil.menus.utils.MenuHolder;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.Consumable;
 import io.papermc.paper.datacomponent.item.consumable.ConsumeEffect;
@@ -29,14 +31,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public final class ConsumableEffectMenu extends PaginatedMenu<ConsumeEffect> {
+public final class ConsumableEffectMenu extends PaginatedMenu<MenuHolder, ConsumeEffect> {
 
     final List<ConsumeEffect> effects;
     final ItemStack stack;
     final Consumable.Builder consumable;
 
     public ConsumableEffectMenu(final ItemStack stack, final @NotNull Consumable.Builder consumable) {
-        super(null, new ArrayList<>(consumable.build().consumeEffects()));
+        super(null, "Consumable effect Menu", InventorySize.FULL, new ArrayList<>(consumable.build().consumeEffects()));
 
         this.stack = stack;
         // This is here to make this list modifiable.
@@ -48,8 +50,6 @@ public final class ConsumableEffectMenu extends PaginatedMenu<ConsumeEffect> {
                 .animation(consumable.build().animation())
                 .sound(consumable.build().sound());
 
-        setTitle("Consumable Effect Menu");
-        setSize(54);
         setHideNav(true);
     }
 
@@ -59,10 +59,10 @@ public final class ConsumableEffectMenu extends PaginatedMenu<ConsumeEffect> {
     }
 
     @Override
-    public void makeButtons() {
-        registerButtons(new MenuTriggerButton() {
+    public List<Button<MenuHolder>> makeButtons() {
+        return List.of(new MenuTriggerButton<>() {
             @Override
-            public Menu getMenu(IMenuHolder user, ClickType click) {
+            public Menu getMenu(MenuHolder user, ClickType click) {
                 return new ConsumableEffectCreateMenu(ConsumableEffectMenu.this);
             }
 
@@ -92,7 +92,7 @@ public final class ConsumableEffectMenu extends PaginatedMenu<ConsumeEffect> {
                         "<dark_aqua>Probability to apply <arrow> <secondary>" + (effect.probability() * 100.0F) + "%",
                         "<dark_aqua>Applies Effects <arrow>"
                 ));
-                lore.addAll(WrapUtils.convertStringToList("<secondary>" + effectsToString(effects), "<secondary>"));
+                lore.addAll(WrapUtils.convertStringToList("<secondary>" + effectsToString(effects)));
                 lore.addAll(List.of(
                         "",
                         "<yellow>Left-Click<gray> to remove this effect."
@@ -102,7 +102,7 @@ public final class ConsumableEffectMenu extends PaginatedMenu<ConsumeEffect> {
                 final Color color = colors.size() <= 1 ? colors.getFirst() : colors.removeFirst().mixColors(colors.toArray(new Color[0]));
 
                 yield ItemCreator.of(Material.POTION).display("<light_purple>Apply Status Effects").lore(lore)
-                        .options(ItemOptions.HIDE_ALL_FLAGS)
+                        .options(ItemOptions.builder().hiddenComponent(DataComponentTypes.POTION_CONTENTS))
                         .manipulator(new ColorManipulator(color)).build();
             }
             case final ConsumeEffect.ClearAllStatusEffects ignored ->
@@ -124,7 +124,7 @@ public final class ConsumableEffectMenu extends PaginatedMenu<ConsumeEffect> {
                 if (effect.removeEffects().size() > 2) {
                     lore = new ArrayList<>();
                     lore.add("<dark_aqua>Clears Effects <arrow>");
-                    lore.addAll(WrapUtils.convertStringToList("<secondary>" + registrySetToString(effect.removeEffects()), "<secondary>"));
+                    lore.addAll(WrapUtils.convertStringToList("<secondary>" + registrySetToString(effect.removeEffects())));
                     lore.addAll(List.of(
                             "",
                             "<yellow>Left-Click<gray> to remove this effect."
@@ -151,24 +151,24 @@ public final class ConsumableEffectMenu extends PaginatedMenu<ConsumeEffect> {
     }
 
     @Override
-    public void postDisplay() {
+    public void postDisplay(MenuHolder holder) {
         updatePages(effects);
     }
 
     @Override
-    public void onClose(IMenuHolder user) {
+    public void onClose(MenuHolder holder) {
         // We must check if we aren't opening new, if we didn't, the data would be updated everytime we switch from this menu.
         // Which isn't a very good experience.
         // We also check if the item is consumable because then we can update it. If it doesn't, we use the default consumable.
-        if (!isOpeningNew() && this.stack.hasData(DataComponentTypes.CONSUMABLE))
+        if (this.stack.hasData(DataComponentTypes.CONSUMABLE))
             this.stack.setData(DataComponentTypes.CONSUMABLE, this.consumable.addEffects(effects).build());
-        else if (!isOpeningNew() && !this.effects.isEmpty()) {
+        else if (!this.effects.isEmpty()) {
             this.stack.setData(DataComponentTypes.CONSUMABLE, Consumable.consumable().addEffects(effects).build());
         }
     }
 
     @Override
-    public void onClickPageItem(IMenuHolder holder, ConsumeEffect consumeEffect, @NotNull ClickType clickType) {
+    public void onClickPageItem(MenuHolder holder, ConsumeEffect consumeEffect, @NotNull ClickType clickType) {
         if (clickType.isLeftClick()) {
             effects.remove(consumeEffect);
             cleanUpdatePages(effects);

@@ -1,6 +1,6 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
-import com.itsschatten.itemeditor.commands.arguments.GenericEnumArgument;
+import com.itsschatten.yggdrasil.commands.arguments.GenericEnumArgument;
 import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
@@ -198,11 +198,11 @@ public final class BookSubCommand extends BrigadierCommand {
                                     if (level <= 0) {
                                         // Remove our enchantment.
                                         meta.removeStoredEnchant(enchantment);
-                                        Utils.tell(context.getSource(), "<primary>Removed the enchantment <secondary>" + enchantment.getKey().getKey() + "</secondary> from your item.");
+                                        Utils.tell(context.getSource(), "<primary>Removed the stored enchantment <secondary>" + enchantment.getKey().getKey() + "</secondary> from your item.");
                                     } else {
                                         // Add our enchantment with the provided level.
                                         meta.addStoredEnchant(enchantment, level, true);
-                                        Utils.tell(context.getSource(), "<primary>Added the enchantment <secondary>" + enchantment.getKey().getKey() + "</secondary> at level <secondary>" + level + "</secondary> to your item.");
+                                        Utils.tell(context.getSource(), "<primary>Added the enchantment <secondary>" + enchantment.getKey().getKey() + "</secondary> at level <secondary>" + level + "</secondary> to your item enchantment storage.");
                                     }
 
                                     return meta;

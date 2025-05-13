@@ -200,7 +200,7 @@ public final class SkinSubCommand extends BrigadierCommand {
                                     textures.setSkin(new URI(url).toURL());
                                 } catch (URISyntaxException | MalformedURLException e) {
                                     Utils.logError(e);
-                                    Utils.sendDeveloperErrorMessage((Player) context.getSource().getSender(), e);
+                                    Utils.sendDeveloperErrorMessage(context.getSource().getSender(), e);
                                     Utils.tell(context.getSource(), "<red>Failed to load skull texture: " + url);
                                     return 0;
                                 }

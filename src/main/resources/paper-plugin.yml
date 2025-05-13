@@ -5,3 +5,8 @@ description: "Another item editor plugin."
 bootstrapper: com.itsschatten.itemeditor.ItemEditorBootstrap
 api-version: "1.21"
 name: "ItemEditor"
+dependencies:
+  server:
+    Utilities:
+      load: BEFORE
+      required: false

@@ -1,13 +1,13 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
-import com.itsschatten.itemeditor.commands.arguments.GenericEnumArgument;
 import com.itsschatten.itemeditor.menus.ConsumableEffectMenu;
 import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.itemeditor.utils.StringHelper;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
-import com.itsschatten.yggdrasil.menus.MenuUtils;
+import com.itsschatten.yggdrasil.commands.arguments.GenericEnumArgument;
+import com.itsschatten.yggdrasil.menus.utils.MenuHolder;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -23,7 +23,6 @@ import io.papermc.paper.datacomponent.item.consumable.ItemUseAnimation;
 import io.papermc.paper.registry.RegistryKey;
 import io.papermc.paper.registry.TypedKey;
 import io.papermc.paper.registry.set.RegistrySet;
-import net.kyori.adventure.identity.Identity;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -73,7 +72,7 @@ public final class ConsumableSubCommand extends BrigadierCommand {
                 )
                 .then(literal("effects")
                         .then(literal("menu")
-                                .executes(context -> handleComponent(context, (consumable, stack) -> new ConsumableEffectMenu(stack, consumable.toBuilder()).displayTo(MenuUtils.getManager().getMenuHolder(context.getSource().getSender().get(Identity.UUID).orElse(null)))))
+                                .executes(context -> handleComponent(context, (consumable, stack) -> new ConsumableEffectMenu(stack, consumable.toBuilder()).displayTo(MenuHolder.wrap((Player) context.getSource().getSender()))))
                         )
                         .then(literal("apply_effect")
                                 .then(argument("effect", ArgumentTypes.resource(RegistryKey.MOB_EFFECT))

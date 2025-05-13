@@ -4,11 +4,11 @@ import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
-import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes;
+import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.registry.RegistryKey;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -28,9 +28,9 @@ public final class JukeboxSubCommand extends BrigadierCommand {
         return StringUtil.color("<primary>/ie jukebox <secondary><name></secondary>").hoverEvent(StringUtil.color("""
                 <primary>
                 \s
-                ◼ <secondary><name><required> </secondary> The name for the item.
-                ◼ <secondary>[-view]<optional></secondary> View the item's current name.
-                ◼ <secondary>[-clear]<optional></secondary> Clear the name.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand("/ie jukebox "));
+                ◼ <secondary><name><required> </secondary> The song for the item.
+                ◼ <secondary>[-view]<optional></secondary> View the item's current song.
+                ◼ <secondary>[-clear]<optional></secondary> Clear the song.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand("/ie jukebox "));
     }
 
     @Override
@@ -41,19 +41,6 @@ public final class JukeboxSubCommand extends BrigadierCommand {
                 )
                 .then(literal("-clear")
                         .executes(this::clear)
-                )
-                .then(argument("hide", BoolArgumentType.bool())
-                        .executes(context -> updatePlayableComponent(context, (component) -> {
-                            final boolean value = BoolArgumentType.getBool(context, "hide");
-                            if (value == !component.isShowInTooltip()) {
-                                Utils.tell(context.getSource(), "<primary>Your song is already hidden on this item!");
-                                return component;
-                            }
-
-                            component.setShowInTooltip(!value);
-                            Utils.tell(context.getSource(), "<primary>Your song is <secondary>" + (value ? "now" : "no longer") + " hidden</secondary> on this item!");
-                            return component;
-                        }))
                 )
                 .then(argument("song", ArgumentTypes.resource(RegistryKey.JUKEBOX_SONG))
                         .executes(context -> updatePlayableComponent(context, (component) -> {
@@ -89,7 +76,7 @@ public final class JukeboxSubCommand extends BrigadierCommand {
                 <primary>Song <dark_gray>»</dark_gray> <secondary>{song}</secondary>
                 <primary>Hidden <dark_gray>»</dark_gray> <secondary>{hidden}</secondary>"""
                 .replace("{song}", component.getSong() == null ? "null" : component.getSong().key().asString())
-                .replace("{hidden}", component.isShowInTooltip() + ""));
+                .replace("{hidden}", String.valueOf(stack.hasData(DataComponentTypes.TOOLTIP_DISPLAY) && stack.getData(DataComponentTypes.TOOLTIP_DISPLAY).hiddenComponents().contains(DataComponentTypes.JUKEBOX_PLAYABLE))));
 
         return 1;
     }

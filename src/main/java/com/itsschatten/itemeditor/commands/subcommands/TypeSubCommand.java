@@ -53,6 +53,8 @@ public final class TypeSubCommand extends BrigadierCommand {
                                 return 0;
                             }
 
+                            // ItemType is probably not null at this point...
+                            assert item != null;
                             final Material material = item.createItemStack().getType();
                             // Make sure it's an item material.
                             if (!material.isItem()) {

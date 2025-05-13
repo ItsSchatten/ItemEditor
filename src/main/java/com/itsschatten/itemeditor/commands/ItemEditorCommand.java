@@ -10,7 +10,6 @@ import io.papermc.paper.command.brigadier.CommandSourceStack;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.entity.Player;
-import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -37,7 +36,9 @@ public final class ItemEditorCommand extends BrigadierCommand {
                 new ArmorTrimSubCommand(),
                 new AttributeSubCommand(),
                 new BannerSubCommand(),
+                // new BlocksAttacksSubCommand(), // TODO: Enable this when BlocksAttacks is completed.
                 new BookSubCommand(),
+                new BreakSoundSubCommand(),
                 new BucketSubCommand(),
                 new ColorSubCommand(),
                 new CompassSubCommand(),
@@ -56,8 +57,6 @@ public final class ItemEditorCommand extends BrigadierCommand {
                 new FoodSubCommand(),
                 new GliderSubCommand(),
                 new GoatHornSubCommand(),
-                new HideSubCommand(),
-                new HideTooltipSubCommand(),
                 new IntangibleSubCommand(),
                 new ItemNameSubCommand(),
                 new JukeboxSubCommand(),
@@ -72,13 +71,13 @@ public final class ItemEditorCommand extends BrigadierCommand {
                 new ResistantSubCommand(),
                 new RepairableSubCommand(),
                 new RepairCostSubCommand(),
-                new ShowSubCommand(),
                 new SkinSubCommand(),
                 new StewSubCommand(),
                 new TooltipSubCommand(),
                 new ToolSubCommand(),
                 new TypeSubCommand(),
-                new UnbreakableSubCommand()
+                new UnbreakableSubCommand(),
+                new WeaponSubCommand()
         ));
     }
 

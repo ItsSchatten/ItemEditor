@@ -5,12 +5,14 @@ import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.WrapUtils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
+import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes;
+import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.registry.RegistryKey;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -46,6 +48,11 @@ public final class PotionSubCommand extends BrigadierCommand {
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
         return literal("potion")
+                .then(literal("scale")
+                        .then(argument("scale", FloatArgumentType.floatArg(0.0f))
+                                .executes(context -> updatePotionStack(context, FloatArgumentType.getFloat(context, "scale")))
+                        )
+                )
                 .then(literal("name")
                         .then(argument("key", StringArgumentType.word())
                                 .executes(context -> updatePotion(context, potion -> {
@@ -155,7 +162,27 @@ public final class PotionSubCommand extends BrigadierCommand {
             Utils.tell(context, "<primary>Your potion's custom name is: <secondary>" + meta.getCustomPotionName() + "</secondary>!");
         }
 
+        if (stack.hasData(DataComponentTypes.POTION_DURATION_SCALE)) {
+            float scale = stack.getData(DataComponentTypes.POTION_DURATION_SCALE).floatValue();
+            Utils.tell(context, "<primary>Your potion duration scale is currently <secondary>" + scale + "</secondary>.");
+        } else {
+            Utils.tell(context, "<primary>Your potion duration scale is currently <secondary>1.0</secondary>.");
+        }
+
         return 1;
+    }
+
+    private int updatePotionStack(final @NotNull CommandContext<CommandSourceStack> context, float scale) {
+        final Player user = (Player) context.getSource().getSender();
+        // Get the item stack in the user's main hand.
+        final ItemStack stack = user.getInventory().getItemInMainHand();
+        if (ItemValidator.isInvalid(stack)) {
+            Utils.tell(user, "<red>You need to be holding an item in your hand.");
+            return 0;
+        }
+
+        stack.setData(DataComponentTypes.POTION_DURATION_SCALE, scale);
+        return SUCCESS;
     }
 
     private int updatePotion(final @NotNull CommandContext<CommandSourceStack> context, final UnaryOperator<PotionMeta> function) {

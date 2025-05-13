@@ -1,7 +1,7 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
 import com.itsschatten.itemeditor.commands.arguments.ColorArgument;
-import com.itsschatten.itemeditor.commands.arguments.GenericEnumArgument;
+import com.itsschatten.yggdrasil.commands.arguments.GenericEnumArgument;
 import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;

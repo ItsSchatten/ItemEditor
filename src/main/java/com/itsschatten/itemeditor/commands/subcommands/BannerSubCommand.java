@@ -1,12 +1,13 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
-import com.itsschatten.itemeditor.commands.arguments.GenericEnumArgument;
+import com.itsschatten.yggdrasil.commands.arguments.GenericEnumArgument;
 import com.itsschatten.itemeditor.menus.BannerMenu;
 import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
 import com.itsschatten.yggdrasil.menus.MenuUtils;
+import com.itsschatten.yggdrasil.menus.utils.MenuHolder;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -163,7 +164,7 @@ public final class BannerSubCommand extends BrigadierCommand {
             return;
         }
 
-        new BannerMenu(stack, meta).displayTo(MenuUtils.getManager().getMenuHolder(user));
+        new BannerMenu(stack, meta).displayTo(MenuHolder.wrap(user));
     }
 
     private void addPattern(final CommandSourceStack source, final PatternType type, final DyeColor color) {

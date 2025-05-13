@@ -10,9 +10,9 @@ import com.itsschatten.yggdrasil.menus.buttons.DynamicButton;
 import com.itsschatten.yggdrasil.menus.buttons.premade.InfoButton;
 import com.itsschatten.yggdrasil.menus.buttons.premade.ReturnButton;
 import com.itsschatten.yggdrasil.menus.types.StandardMenu;
-import com.itsschatten.yggdrasil.menus.utils.IMenuHolder;
 import com.itsschatten.yggdrasil.menus.utils.InventoryPosition;
-import org.apache.commons.lang.WordUtils;
+import com.itsschatten.yggdrasil.menus.utils.MenuHolder;
+import org.apache.commons.text.WordUtils;
 import org.bukkit.*;
 import org.bukkit.event.inventory.ClickType;
 import org.jetbrains.annotations.Contract;
@@ -25,7 +25,7 @@ import java.util.*;
 /**
  * Menu responsible for editing a firework effect.
  */
-public final class FireworkEffectMenu extends StandardMenu {
+public final class FireworkEffectMenu extends StandardMenu<MenuHolder> {
 
     // The parent menu.
     final FireworkMenu parentMenu;
@@ -53,7 +53,7 @@ public final class FireworkEffectMenu extends StandardMenu {
      * @param toEdit The effect to edit, can be null.
      */
     public FireworkEffectMenu(final FireworkMenu menu, final FireworkEffect toEdit) {
-        super(menu);
+        super(menu, "Firework Effect Editor", 45);
 
         // Set default values if 'toEdit' is 'null.'
         if (toEdit == null) {
@@ -75,9 +75,6 @@ public final class FireworkEffectMenu extends StandardMenu {
         }
 
         this.parentMenu = menu;
-
-        setTitle("Firework Effect Editor");
-        setSize(45);
     }
 
     // Set the information for the Information item.
@@ -91,26 +88,26 @@ public final class FireworkEffectMenu extends StandardMenu {
     }
 
     @Override
-    public @Nullable InfoButton getInfoButton() {
-        return Objects.requireNonNull(super.getInfoButton()).toBuilder().position(InventoryPosition.of(1, 8)).build();
+    public @Nullable InfoButton.InfoButtonBuilder<MenuHolder> getInfoButton() {
+        return Objects.requireNonNull(super.getInfoButton()).position(InventoryPosition.of(1, 8));
     }
 
     // Registers buttons for this menu.
     @Override
-    public void makeButtons() {
+    public @NotNull @Unmodifiable List<Button<MenuHolder>> makeButtons() {
         // Loops all DyeColor values and registers their buttons.
         for (int i = 0; i < DyeColor.values().length; i++) {
-            final Button colorButton = makeButton(i);
+            final Button<MenuHolder> colorButton = makeButton(i);
 
             registerButtons(colorButton);
         }
 
         // The shape of the firework effect.
         // This is a dynamic button, this button. It will be updated 1 second after clicking it.
-        final Button typeButton = new DynamicButton() {
+        final Button<MenuHolder> typeButton = new DynamicButton<>() {
             // Different method name, but effectively does what onClick does.
             @Override
-            public void onClicked(IMenuHolder user, Menu menu, @NotNull ClickType click) {
+            public void onClicked(MenuHolder user, Menu menu, @NotNull ClickType click) {
                 if (click.isRightClick()) {
                     // Go down the enum until 0.
                     type = FireworkEffect.Type.values()[Math.max(0, type.ordinal() - 1)];
@@ -154,9 +151,9 @@ public final class FireworkEffectMenu extends StandardMenu {
 
         // The twinkle effect of the firework effect.
         // This is a dynamic button, this button. It will be updated 1 second after clicking it.
-        final Button twinkleButton = new DynamicButton() {
+        final Button<MenuHolder> twinkleButton = new DynamicButton<>() {
             @Override
-            public void onClicked(IMenuHolder user, Menu menu, @NotNull ClickType click) {
+            public void onClicked(MenuHolder user, Menu menu, @NotNull ClickType click) {
                 // Toggle the flicker value.
                 flicker = !flicker;
             }
@@ -180,9 +177,9 @@ public final class FireworkEffectMenu extends StandardMenu {
 
         // The trail of the firework effect.
         // This is a dynamic button. It will be updated 1 second after clicking it.
-        final Button trailButton = new DynamicButton() {
+        final Button<MenuHolder> trailButton = new DynamicButton<>() {
             @Override
-            public void onClicked(IMenuHolder user, Menu menu, @NotNull ClickType click) {
+            public void onClicked(MenuHolder user, Menu menu, @NotNull ClickType click) {
                 // Toggle the trail value.
                 trail = !trail;
             }
@@ -205,15 +202,15 @@ public final class FireworkEffectMenu extends StandardMenu {
         };
 
         // Register our buttons to the menu, so they function and are automatically set in the menu.
-        registerButtons(typeButton, twinkleButton, trailButton);
+        return List.of(typeButton, twinkleButton, trailButton);
     }
 
     // Utility method to quickly create a DyeColor button from an integer value, usually the ordinal from the DyeColor enum.
-    private @NotNull Button makeButton(int i) {
+    private @NotNull Button<MenuHolder> makeButton(int i) {
         final DyeColor color = DyeColor.values()[i];
         final int finalI = i;
 
-        return new DynamicButton() {
+        return new DynamicButton<>() {
             @Contract(pure = true)
             @Override
             public ItemCreator createItem() {
@@ -221,7 +218,7 @@ public final class FireworkEffectMenu extends StandardMenu {
             }
 
             @Override
-            public void onClicked(IMenuHolder user, Menu menu, @NotNull ClickType click) {
+            public void onClicked(MenuHolder user, Menu menu, @NotNull ClickType click) {
                 // Check if our click is a right click.
                 if (click.isRightClick()) {
                     // Check if we are modifying it with a shift.
@@ -291,17 +288,27 @@ public final class FireworkEffectMenu extends StandardMenu {
     }
 
     @Override
-    public @Nullable ReturnButton getReturnButton() {
-        return Objects.requireNonNull(super.getReturnButton()).toBuilder().position(Objects.requireNonNull(getCloseButton()).getPosition()).build();
+    public @Nullable ReturnButton.ReturnButtonBuilder<MenuHolder> getReturnButton() {
+        return Objects.requireNonNull(super.getReturnButton()).position(Objects.requireNonNull(getCloseButton()).build().getPosition());
+    }
+
+    @Override
+    public void onSwitch(MenuHolder user) {
+        // Check if we have colors if we don't send them a failure message.
+        if (colors.isEmpty()) {
+            user.tell("<red>Failed to build firework effect, didn't have any colors.");
+            return;
+        }
+
+        // Adds the effect to the list of effects.
+        this.parentMenu.effects.add(FireworkEffect.builder().flicker(flicker).trail(trail).with(type).withColor(colors).withFade(fades).build());
     }
 
     // Handles things when the menu is closed.
     @Override
-    public void onClose(IMenuHolder user) {
+    public void onClose(MenuHolder user) {
         // Open the parent menu regardless of how this menu is closed.
-        if (!isOpeningNew()) {
-            Bukkit.getScheduler().runTaskLater(Utils.getInstance(), () -> parentMenu.switchMenu(user, this), 1L);
-        }
+        Bukkit.getScheduler().runTaskLater(Utils.getInstance(), () -> parentMenu.switchMenu(user, this), 1L);
 
         // Check if we have colors if we don't send them a failure message.
         if (colors.isEmpty()) {

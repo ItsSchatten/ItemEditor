@@ -13,9 +13,11 @@ import com.itsschatten.yggdrasil.menus.buttons.DynamicButton;
 import com.itsschatten.yggdrasil.menus.buttons.MenuTriggerButton;
 import com.itsschatten.yggdrasil.menus.types.PaginatedMenu;
 import com.itsschatten.yggdrasil.menus.types.interfaces.Animated;
-import com.itsschatten.yggdrasil.menus.utils.IMenuHolder;
 import com.itsschatten.yggdrasil.menus.utils.InventoryPosition;
-import org.apache.commons.lang.WordUtils;
+import com.itsschatten.yggdrasil.menus.utils.InventorySize;
+import com.itsschatten.yggdrasil.menus.utils.MenuHolder;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import org.apache.commons.text.WordUtils;
 import org.bukkit.DyeColor;
 import org.bukkit.FireworkEffect;
 import org.bukkit.Material;
@@ -33,7 +35,7 @@ import java.util.*;
  * <br>
  * This menu does not allow custom hex colors.
  */
-public final class FireworkMenu extends PaginatedMenu<FireworkEffect> implements Animated {
+public final class FireworkMenu extends PaginatedMenu<MenuHolder, FireworkEffect> implements Animated {
 
     // The actual firework item, it's meta is updated when closing this menu.
     final ItemStack firework;
@@ -50,14 +52,12 @@ public final class FireworkMenu extends PaginatedMenu<FireworkEffect> implements
      * @param meta     The meta of {@link #firework}.
      */
     public FireworkMenu(final ItemStack firework, final @NotNull FireworkMeta meta) {
-        super(null, new ArrayList<>(meta.getEffects()));
+        super(null, "Firework Effect Menu", InventorySize.FULL, new ArrayList<>(meta.getEffects()));
 
         this.firework = firework;
         this.meta = meta;
         this.effects = new ArrayList<>(meta.getEffects());
 
-        setTitle("Firework Effect Menu");
-        setSize(54);
         setHideNav(true);
     }
 
@@ -89,12 +89,12 @@ public final class FireworkMenu extends PaginatedMenu<FireworkEffect> implements
 
     // Makes and registers buttons for this menu.
     @Override
-    public void makeButtons() {
+    public List<Button<MenuHolder>> makeButtons() {
         // The power button, updates the firework's power.
         // This button is dynamic, it will update itself after 1 second after being clicked.
-        final Button powerButton = new DynamicButton() {
+        final Button<MenuHolder> powerButton = new DynamicButton<>() {
             @Override
-            public void onClicked(@NotNull IMenuHolder user, Menu menu, @NotNull ClickType type) {
+            public void onClicked(@NotNull MenuHolder user, Menu menu, @NotNull ClickType type) {
                 // If we are right-clicking, we want to decrease the power, to a minimum of 0,
                 if (type.isRightClick()) {
                     meta.setPower(Math.max(meta.getPower() - 1, 0));
@@ -129,7 +129,7 @@ public final class FireworkMenu extends PaginatedMenu<FireworkEffect> implements
 
         // http://textures.minecraft.net/texture/b056bc1244fcff99344f12aba42ac23fee6ef6e3351d27d273c1572531f
         // Opens the FireworkEffectMenu.
-        final Button addEffect = new MenuTriggerButton() {
+        final Button<MenuHolder> addEffect = new MenuTriggerButton<>() {
             @Override
             public @NotNull ItemCreator createItem() {
                 return ItemCreator.of(Material.PLAYER_HEAD)
@@ -141,7 +141,7 @@ public final class FireworkMenu extends PaginatedMenu<FireworkEffect> implements
 
             @Contract("_, _ -> new")
             @Override
-            public @NotNull Menu getMenu(IMenuHolder user, ClickType type) {
+            public @NotNull Menu<MenuHolder> getMenu(MenuHolder user, ClickType type) {
                 return new FireworkEffectMenu(FireworkMenu.this, null);
             }
 
@@ -154,7 +154,7 @@ public final class FireworkMenu extends PaginatedMenu<FireworkEffect> implements
 
         // Creates an animated button that updates every second.
         // Clicking this button will reward the player with a firework with all the effects from this menu.
-        final Button fireworkButton = new AnimatedButton() {
+        final Button<MenuHolder> fireworkButton = new AnimatedButton<>() {
 
             @Override
             public ItemCreator createItem() {
@@ -162,14 +162,14 @@ public final class FireworkMenu extends PaginatedMenu<FireworkEffect> implements
             }
 
             @Override
-            public void onClicked(@NotNull IMenuHolder user, Menu menu, ClickType click) {
+            public void onClicked(@NotNull MenuHolder user, Menu menu, ClickType click) {
                 final ItemStack firework = new ItemStack(Material.FIREWORK_ROCKET);
                 final FireworkMeta fwMeta = (FireworkMeta) firework.getItemMeta();
                 fwMeta.setPower(meta.getPower());
                 fwMeta.addEffects(effects);
                 firework.setItemMeta(fwMeta);
 
-                user.getBase().getInventory().addItem(firework);
+                user.player().getInventory().addItem(firework);
             }
 
             @Contract(" -> new")
@@ -179,7 +179,7 @@ public final class FireworkMenu extends PaginatedMenu<FireworkEffect> implements
             }
         };
 
-        registerButtons(addEffect, powerButton, fireworkButton);
+        return List.of(addEffect, powerButton, fireworkButton);
     }
 
     // Converts a FireworkEffect to an ItemStack.
@@ -204,7 +204,7 @@ public final class FireworkMenu extends PaginatedMenu<FireworkEffect> implements
         return ItemCreator.of(itemStack)
                 .name("<primary>" + WordUtils.capitalizeFully(effect.getType().name().replace("_", " ")))
                 .lore(lore)
-                .options(ItemOptions.HIDE_ALL_FLAGS)
+                .options(ItemOptions.builder().hiddenComponent(DataComponentTypes.FIREWORK_EXPLOSION))
                 .build();
     }
 
@@ -250,7 +250,7 @@ public final class FireworkMenu extends PaginatedMenu<FireworkEffect> implements
 
     // Called when clicking on a page item in the menu.
     @Override
-    public void onClickPageItem(IMenuHolder user, FireworkEffect effect, @NotNull ClickType click) {
+    public void onClickPageItem(MenuHolder user, FireworkEffect effect, @NotNull ClickType click) {
         // Always removed.
         effects.remove(effect);
 
@@ -263,12 +263,7 @@ public final class FireworkMenu extends PaginatedMenu<FireworkEffect> implements
 
     // Handles things when the menu is closed.
     @Override
-    public void onClose(IMenuHolder user) {
-        // Do nothing if we are opening a new menu.
-        if (this.isOpeningNew()) {
-            return;
-        }
-
+    public void onClose(MenuHolder user) {
         // Remove all effects from the firework.
         meta.clearEffects();
 

@@ -1,14 +1,14 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
-import com.itsschatten.itemeditor.commands.arguments.GenericEnumArgument;
 import com.itsschatten.itemeditor.menus.FireworkMenu;
 import com.itsschatten.itemeditor.menus.FireworkStarMenu;
 import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
-import com.itsschatten.yggdrasil.WrapUtils;
 import com.itsschatten.yggdrasil.Utils;
+import com.itsschatten.yggdrasil.WrapUtils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
-import com.itsschatten.yggdrasil.menus.MenuUtils;
+import com.itsschatten.yggdrasil.commands.arguments.GenericEnumArgument;
+import com.itsschatten.yggdrasil.menus.utils.MenuHolder;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -349,7 +349,7 @@ public final class FireworkSubCommand extends BrigadierCommand {
 
         if (!(stack.getItemMeta() instanceof final FireworkMeta meta)) {
             if (stack.getItemMeta() instanceof final FireworkEffectMeta fireworkEffectMeta) {
-                new FireworkStarMenu(stack, fireworkEffectMeta).displayTo(MenuUtils.getManager().getMenuHolder(user));
+                new FireworkStarMenu(stack, fireworkEffectMeta).displayTo(MenuHolder.wrap(user));
                 return 1;
             }
 
@@ -357,7 +357,7 @@ public final class FireworkSubCommand extends BrigadierCommand {
             return 0;
         }
 
-        new FireworkMenu(stack, meta).displayTo(MenuUtils.getManager().getMenuHolder(user));
+        new FireworkMenu(stack, meta).displayTo(MenuHolder.wrap(user));
         return 1;
     }
 
@@ -427,7 +427,6 @@ public final class FireworkSubCommand extends BrigadierCommand {
                 .replace("{shape}", effect.getType().name().toLowerCase().replace("_", " "))
                 .replace("{effects}", (effect.hasFlicker() ? "flicker" + (effect.hasTrail() ? ", " : "") : "") + (effect.hasTrail() ? "trail" : ""))
                 .replace("{colors}", WrapUtils.wrap(colors, 35, "|"))
-                .replace("{fades}", WrapUtils.wrap(fades, 35, "|"))
-                ;
+                .replace("{fades}", WrapUtils.wrap(fades, 35, "|"));
     }
 }

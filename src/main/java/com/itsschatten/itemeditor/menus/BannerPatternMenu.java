@@ -11,19 +11,19 @@ import com.itsschatten.yggdrasil.menus.buttons.premade.NavigationButton;
 import com.itsschatten.yggdrasil.menus.buttons.premade.ReturnButton;
 import com.itsschatten.yggdrasil.menus.types.PaginatedMenu;
 import com.itsschatten.yggdrasil.menus.types.interfaces.Animated;
-import com.itsschatten.yggdrasil.menus.utils.IMenuHolder;
 import com.itsschatten.yggdrasil.menus.utils.InventoryPosition;
+import com.itsschatten.yggdrasil.menus.utils.MenuHolder;
+import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.registry.PaperRegistryAccess;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
-import org.apache.commons.lang.WordUtils;
+import org.apache.commons.text.WordUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.DyeColor;
 import org.bukkit.Material;
 import org.bukkit.block.banner.Pattern;
 import org.bukkit.block.banner.PatternType;
 import org.bukkit.event.inventory.ClickType;
-import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BannerMeta;
 import org.jetbrains.annotations.Contract;
@@ -37,7 +37,7 @@ import java.util.Objects;
 /**
  * Menu that handles the editing of a banner pattern.
  */
-public final class BannerPatternMenu extends PaginatedMenu<PatternType> implements Animated {
+public final class BannerPatternMenu extends PaginatedMenu<MenuHolder, PatternType> implements Animated {
 
     // The "parent" menu.
     final BannerMenu menu;
@@ -56,7 +56,7 @@ public final class BannerPatternMenu extends PaginatedMenu<PatternType> implemen
      * @param record The pattern we are editing.
      */
     public BannerPatternMenu(final BannerMenu menu, final @Nullable Pattern record) {
-        super(menu, PaperRegistryAccess.instance().getRegistry(RegistryKey.BANNER_PATTERN).stream().toList());
+        super(menu, "Banner Pattern Selection", 45, PaperRegistryAccess.instance().getRegistry(RegistryKey.BANNER_PATTERN).stream().toList());
 
         this.menu = menu;
         this.previous = record;
@@ -64,8 +64,6 @@ public final class BannerPatternMenu extends PaginatedMenu<PatternType> implemen
         this.selected = record == null ? null : record.getPattern();
         this.dyeColor = record == null ? DyeColor.BLACK : record.getColor();
 
-        setSize(45);
-        setTitle("Banner Pattern Selection");
         setHideNav(true);
     }
 
@@ -78,18 +76,18 @@ public final class BannerPatternMenu extends PaginatedMenu<PatternType> implemen
 
     // Sets the menu position of the return button to where a close button will be by default.
     @Override
-    public @Nullable ReturnButton getReturnButton() {
-        return Objects.requireNonNull(super.getReturnButton()).toBuilder().position(Objects.requireNonNull(getCloseButton()).getPosition()).build();
+    public @Nullable ReturnButton.ReturnButtonBuilder<MenuHolder> getReturnButton() {
+        return Objects.requireNonNull(super.getReturnButton()).position(Objects.requireNonNull(getCloseButton()).build().getPosition());
     }
 
     // Utility method to quickly create a DyeColor button from an integer value, usually the ordinal from the DyeColor enum.
-    private @NotNull Button makeButton(final int i) {
+    private @NotNull Button<MenuHolder> makeButton(final int i) {
         final DyeColor color = DyeColor.values()[i];
 
         // This is an animated button, this button updates every second.
-        return new AnimatedButton() {
+        return new AnimatedButton<>() {
             @Override
-            public void onClicked(IMenuHolder user, Menu menu, ClickType type) {
+            public void onClicked(MenuHolder user, Menu<MenuHolder> menu, ClickType type) {
                 // Set our selected dye color to the color found based on the integer.
                 BannerPatternMenu.this.dyeColor = color;
             }
@@ -115,11 +113,13 @@ public final class BannerPatternMenu extends PaginatedMenu<PatternType> implemen
 
     // Makes and registers the dye color buttons.
     @Override
-    public void makeButtons() {
+    public @NotNull List<Button<MenuHolder>> makeButtons() {
+        final List<Button<MenuHolder>> buttons = new ArrayList<>();
         for (int i = 0; i < DyeColor.values().length; i++) {
-            final Button colorButton = makeButton(i);
-            registerButtons(colorButton);
+            final Button<MenuHolder> colorButton = makeButton(i);
+            buttons.add(colorButton);
         }
+        return buttons;
     }
 
     // Draws non-functional items to the menu.
@@ -159,23 +159,38 @@ public final class BannerPatternMenu extends PaginatedMenu<PatternType> implemen
         // Finally, creates the item.
         return ItemCreator.of(convertBanner)
                 .name("<primary>" + WordUtils.capitalizeFully(bannerText.substring(bannerText.indexOf(":") + 1).replace("_", " ")))
-                .options(ItemOptions.builder().itemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP).build())
+                .options(ItemOptions.builder().hiddenComponent(DataComponentTypes.BANNER_PATTERNS).build())
                 .lore(lore).build();
     }
 
     // If we click a page item (a banner pattern), set our selected pattern to it.
     @Override
-    public void onClickPageItem(IMenuHolder user, PatternType pattern, ClickType click) {
+    public void onClickPageItem(MenuHolder user, PatternType pattern, ClickType click) {
         this.selected = pattern;
+    }
+
+    @Override
+    public void onSwitch(MenuHolder user) {
+        // We have no selected, ignore it and send a message to the player, so they know no new pattern was added.
+        if (selected == null) {
+            user.tell("<red>Failed to add a new pattern. You never selected a pattern type!");
+            return;
+        }
+
+        // Update the list based on the previous PatternRecord. If we have one, update the list location with our new pattern.
+        // Otherwise, add the pattern to the end of the list.
+        if (previous != null) {
+            this.menu.patterns.set(this.menu.patterns.indexOf(previous), new Pattern(dyeColor, selected));
+        } else {
+            this.menu.patterns.add(new Pattern(dyeColor, selected));
+        }
     }
 
     // Handles things on menu close.
     @Override
-    public void onClose(IMenuHolder user) {
+    public void onClose(MenuHolder user) {
         // We aren't opening a new menu, so open our parent.
-        if (!isOpeningNew()) {
-            Bukkit.getScheduler().runTaskLater(Utils.getInstance(), () -> menu.switchMenu(user, this), 1L);
-        }
+        Bukkit.getScheduler().runTaskLater(Utils.getInstance(), () -> menu.switchMenu(user, this), 1L);
 
         // We have no selected, ignore it and send a message to the player, so they know no new pattern was added.
         if (selected == null) {
@@ -194,23 +209,23 @@ public final class BannerPatternMenu extends PaginatedMenu<PatternType> implemen
     }
 
     @Override
-    public NavigationButton getCounterButton() {
-        return Objects.requireNonNull(super.getCounterButton()).toBuilder().position(InventoryPosition.of(2, 4)).build();
+    public NavigationButton.NavigationButtonBuilder<MenuHolder> getCounterButton() {
+        return Objects.requireNonNull(super.getCounterButton()).position(InventoryPosition.of(2, 4));
     }
 
     @Override
-    public NavigationButton getPreviousButton() {
-        return Objects.requireNonNull(super.getPreviousButton()).toBuilder().position(InventoryPosition.of(2, 3)).build();
+    public NavigationButton.NavigationButtonBuilder<MenuHolder> getPreviousButton() {
+        return Objects.requireNonNull(super.getPreviousButton()).position(InventoryPosition.of(2, 3));
     }
 
     @Override
-    public NavigationButton getNextButton() {
-        return Objects.requireNonNull(super.getNextButton()).toBuilder().position(InventoryPosition.of(2, 5)).build();
+    public NavigationButton.NavigationButtonBuilder<MenuHolder> getNextButton() {
+        return Objects.requireNonNull(super.getNextButton()).position(InventoryPosition.of(2, 5));
     }
 
     // Set a list of placeable positions in the menu, in this case the first 2 rows in the menu.
     @Override
-    public List<InventoryPosition> getPlaceablePositions() {
+    public @NotNull List<InventoryPosition> getPlaceablePositions() {
         final List<InventoryPosition> placeablePositions = new ArrayList<>();
         placeablePositions.addAll(InventoryPosition.ofRow(0));
         placeablePositions.addAll(InventoryPosition.ofRow(1));
@@ -221,6 +236,6 @@ public final class BannerPatternMenu extends PaginatedMenu<PatternType> implemen
     // Refresh this page ever second, this only updates the page items and does not touch the other buttons.
     @Override
     public void animate() {
-        refreshPage();
+        refresh();
     }
 }

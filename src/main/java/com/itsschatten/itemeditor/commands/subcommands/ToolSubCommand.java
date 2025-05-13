@@ -19,20 +19,24 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.ResourceOrTagKeyArgument;
 import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.component.Tool;
 import net.minecraft.world.level.block.Block;
 import org.apache.commons.lang3.StringUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Tag;
+import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.components.ToolComponent;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -157,6 +161,13 @@ public final class ToolSubCommand extends BrigadierCommand {
                                 }))
                         )
                 )
+                // TODO: Fix this when Paper updates ToolComponent.
+                .then(literal("creativebreak")
+                        .then(argument("value", BoolArgumentType.bool())
+                                .executes(context -> updateCreativeBreaks(context, BoolArgumentType.getBool(context, "value")))
+                        )
+                        .executes(context -> updateCreativeBreaks(context, null))
+                )
                 .then(literal("-view")
                         .executes(this::handleView)
                 )
@@ -208,6 +219,28 @@ public final class ToolSubCommand extends BrigadierCommand {
                 .replace("{rules}", StringUtils.substringBeforeLast(builder.toString(), ","))
         );
         return 1;
+    }
+
+    private int updateCreativeBreaks(final @NotNull CommandContext<CommandSourceStack> context, @Nullable Boolean bool) {
+        final Player user = (Player) context.getSource().getSender();
+
+        final ItemStack stack = user.getInventory().getItemInMainHand();
+        if (ItemValidator.isInvalid(stack)) {
+            Utils.tell(user, "<red>You need to be holding an item in your hand.");
+            return 0;
+        }
+
+        final net.minecraft.world.item.ItemStack nmsItemStack = CraftItemStack.asNMSCopy(stack);
+        final Tool tool = nmsItemStack.get(DataComponents.TOOL);
+
+        if (tool != null) {
+            final boolean fixed = bool != null ? bool : !tool.canDestroyBlocksInCreative();
+            nmsItemStack.set(DataComponents.TOOL, new Tool(tool.rules(), tool.defaultMiningSpeed(), tool.damagePerBlock(), fixed));
+        } else {
+            nmsItemStack.set(DataComponents.TOOL, new Tool(List.of(), 1, 1, true));
+        }
+
+        return SUCCESS;
     }
 
     private int updateTool(final @NotNull CommandContext<CommandSourceStack> context, UnaryOperator<ToolComponent> function) {

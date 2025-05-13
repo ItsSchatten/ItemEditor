@@ -5,6 +5,7 @@ import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -112,15 +113,15 @@ public final class ModelDataSubCommand extends BrigadierCommand {
                             // Data is the actual updated component.
                             final CustomModelDataComponent data = meta.getCustomModelDataComponent();
 
-                            tag.getAllKeys().forEach(key -> {
+                            tag.keySet().forEach(key -> {
                                 switch (key) {
                                     // Assume a single or a list of floats.
                                     // And don't parse other data.
                                     case "floats" -> {
                                         if (Objects.requireNonNull(tag.get(key)).getId() == Tag.TAG_FLOAT) {
-                                            data.setFloats(List.of(((FloatTag) Objects.requireNonNull(tag.get(key))).getAsFloat()));
+                                            data.setFloats(List.of(((FloatTag) Objects.requireNonNull(tag.get(key))).floatValue()));
                                         } else {
-                                            data.setFloats(tag.getList(key, Tag.TAG_FLOAT).stream().map(tag1 -> tag1.getId() == Tag.TAG_FLOAT ? ((FloatTag) tag1).getAsFloat() : null).toList());
+                                            data.setFloats(tag.getListOrEmpty(key).stream().map(tag1 -> tag1.getId() == Tag.TAG_FLOAT ? ((FloatTag) tag1).floatValue() : null).toList());
                                         }
                                     }
 
@@ -128,15 +129,15 @@ public final class ModelDataSubCommand extends BrigadierCommand {
                                         // Assume a single or a list of booleans.
                                         // And don't parse other data.
                                         if (Objects.requireNonNull(tag.get(key)).getId() == Tag.TAG_BYTE) {
-                                            data.setFlags(List.of(((ByteTag) Objects.requireNonNull(tag.get(key))).getAsByte() == (byte) 1));
+                                            data.setFlags(List.of(((ByteTag) Objects.requireNonNull(tag.get(key))).byteValue() == (byte) 1));
                                         } else {
-                                            data.setFlags(tag.getList(key, Tag.TAG_BYTE).stream().map(tag1 -> tag1.getId() == Tag.TAG_BYTE ? ((ByteTag) tag1).getAsByte() == (byte) 1 : null).toList());
+                                            data.setFlags(tag.getListOrEmpty(key).stream().map(tag1 -> tag1.getId() == Tag.TAG_BYTE ? ((ByteTag) tag1).byteValue() == (byte) 1 : null).toList());
                                         }
                                     }
 
                                     case "colors" -> {
                                         try {
-                                            final int type = ((ListTag) Objects.requireNonNull(tag.get(key))).getElementType();
+                                            // final int type = ((ListTag) Objects.requireNonNull(tag.get(key))).identifyRawElementType();
                                             final List<Color> colors = new ArrayList<>();
 
                                             // Assume a single or a list of colors, in any of their forms.
@@ -145,32 +146,22 @@ public final class ModelDataSubCommand extends BrigadierCommand {
                                             // It could be a magic number, if needed.
                                             if (Objects.requireNonNull(tag.get(key)).getId() == Tag.TAG_INT_ARRAY) {
                                                 final IntArrayTag rgbTag = (IntArrayTag) Objects.requireNonNull(tag.get(key));
-                                                if (rgbTag.isEmpty() || rgbTag.size() < 3) {
-                                                    Utils.tell(context, "<red>Failed to build a color from " + rgbTag + ".");
-                                                    return;
-                                                }
-
-                                                colors.add(Color.fromRGB(rgbTag.getFirst().getAsInt(), rgbTag.get(1).getAsInt(), rgbTag.get(2).getAsInt()));
+                                                extractColors(context, colors, rgbTag);
                                             } else if (Objects.requireNonNull(tag.get(key)).getId() == Tag.TAG_STRING) {
-                                                final DyeColor color = DyeColor.valueOf(Objects.requireNonNull(tag.get(key)).getAsString().toUpperCase().replace(" ", "_"));
+                                                final DyeColor color = DyeColor.valueOf(Objects.requireNonNull(tag.get(key)).asString().orElseThrow().toUpperCase().replace(" ", "_"));
                                                 colors.add(color.getColor());
                                             } else if (Objects.requireNonNull(tag.get(key)).getId() == Tag.TAG_INT) {
-                                                colors.add(Color.fromARGB(((IntTag) Objects.requireNonNull(tag.get(key))).getAsInt()));
+                                                colors.add(Color.fromARGB(Objects.requireNonNull(tag.get(key)).asInt().orElseThrow()));
                                             } else {
-                                                tag.getList(key, type).forEach(tag1 -> {
+                                                tag.getListOrEmpty(key).forEach(tag1 -> {
                                                     if (tag1.getId() == Tag.TAG_INT_ARRAY) {
                                                         final IntArrayTag rgbTag = (IntArrayTag) tag1;
-                                                        if (rgbTag.isEmpty() || rgbTag.size() < 3) {
-                                                            Utils.tell(context, "<red>Failed to build a color from " + rgbTag + ".");
-                                                            return;
-                                                        }
-
-                                                        colors.add(Color.fromRGB(rgbTag.getFirst().getAsInt(), rgbTag.get(1).getAsInt(), rgbTag.get(2).getAsInt()));
+                                                        extractColors(context, colors, rgbTag);
                                                     } else if (tag1.getId() == Tag.TAG_STRING) {
-                                                        final DyeColor color = DyeColor.valueOf(tag1.getAsString().toUpperCase().replace(" ", "_"));
+                                                        final DyeColor color = DyeColor.valueOf(tag1.asString().orElseThrow().toUpperCase().replace(" ", "_"));
                                                         colors.add(color.getColor());
                                                     } else if (tag1.getId() == Tag.TAG_INT) {
-                                                        colors.add(Color.fromARGB(((IntTag) tag1).getAsInt()));
+                                                        colors.add(Color.fromARGB(tag1.asInt().orElseThrow()));
                                                     }
                                                 });
                                             }
@@ -190,9 +181,9 @@ public final class ModelDataSubCommand extends BrigadierCommand {
                                         // Assume a single or a list of strings.
                                         // And don't parse other data.
                                         if (Objects.requireNonNull(tag.get(key)).getId() == Tag.TAG_STRING) {
-                                            data.setStrings(List.of(Objects.requireNonNull(tag.get(key)).getAsString()));
+                                            data.setStrings(List.of(Objects.requireNonNull(tag.get(key)).asString().orElseThrow()));
                                         } else {
-                                            data.setStrings(tag.getList(key, Tag.TAG_STRING).stream().map(tag1 -> tag1.getId() == Tag.TAG_STRING ? tag1.getAsString() : null).toList());
+                                            data.setStrings(tag.getListOrEmpty(key).stream().map(tag1 -> tag1.getId() == Tag.TAG_STRING ? tag1.asString().orElse(null) : null).toList());
                                         }
                                     }
 
@@ -207,6 +198,16 @@ public final class ModelDataSubCommand extends BrigadierCommand {
                             return 1;
                         })
                 );
+    }
+
+    private void extractColors(CommandContext<CommandSourceStack> context, List<Color> colors, @NotNull IntArrayTag rgbTag) {
+        if (rgbTag.isEmpty() || rgbTag.size() < 3) {
+            Utils.tell(context, "<red>Failed to build a color from " + rgbTag + ".");
+            return;
+        }
+
+        final int[] array = rgbTag.getAsIntArray();
+        colors.add(Color.fromRGB(array[0], array[1], array[2]));
     }
 
     private String compareToString(final @NotNull CustomModelDataComponent old, final @NotNull CustomModelDataComponent updated) {
