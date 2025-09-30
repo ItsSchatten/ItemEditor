@@ -27,11 +27,11 @@ public final class BreakSoundSubCommand extends BrigadierCommand {
     @Override
     public @NotNull Component descriptionComponent() {
         return StringUtil.color("<primary>/ie breaksound <secondary><name></secondary>").hoverEvent(StringUtil.color("""
-                <primary>
+                <primary>Set the sound to play when the item breaks.
                 \s
                 ◼ <secondary><name><required></secondary> The break sound for the item.
                 ◼ <secondary>[-view]<optional></secondary> View the item's current break sound.
-                ◼ <secondary>[-clear]<optional></secondary> Clear the break sound.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand("/ie jukebox "));
+                ◼ <secondary>[-clear]<optional></secondary> Clear the break sound.""").asHoverEvent()).clickEvent(ClickEvent.suggestCommand("/ie breaksound "));
     }
 
     @Override
@@ -64,7 +64,6 @@ public final class BreakSoundSubCommand extends BrigadierCommand {
         }
 
         // Get the item's meta and check if it's null, it really shouldn't be but safety.
-        final ItemMeta meta = stack.getItemMeta();
         if (!stack.hasData(DataComponentTypes.BREAK_SOUND)) {
             Utils.tell(user, "<primary>Your item does not have a break sound!");
             return 0;

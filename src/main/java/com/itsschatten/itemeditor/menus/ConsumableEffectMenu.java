@@ -62,7 +62,7 @@ public final class ConsumableEffectMenu extends PaginatedMenu<MenuHolder, Consum
     public List<Button<MenuHolder>> makeButtons() {
         return List.of(new MenuTriggerButton<>() {
             @Override
-            public Menu getMenu(MenuHolder user, ClickType click) {
+            public @NotNull Menu<MenuHolder> getMenu(MenuHolder user, ClickType click) {
                 return new ConsumableEffectCreateMenu(ConsumableEffectMenu.this);
             }
 
@@ -89,8 +89,8 @@ public final class ConsumableEffectMenu extends PaginatedMenu<MenuHolder, Consum
                 final List<PotionEffect> effects = effect.effects();
                 final List<String> lore = new ArrayList<>(List.of(
                         "<info>Info Legend: Has Particles, Has Icon, Is Ambient",
-                        "<dark_aqua>Probability to apply <arrow> <secondary>" + (effect.probability() * 100.0F) + "%",
-                        "<dark_aqua>Applies Effects <arrow>"
+                        "<value>Probability to apply <arrow> <secondary>" + (effect.probability() * 100.0F) + "%",
+                        "<value>Applies Effects <arrow>"
                 ));
                 lore.addAll(WrapUtils.convertStringToList("<secondary>" + effectsToString(effects)));
                 lore.addAll(List.of(
@@ -114,7 +114,7 @@ public final class ConsumableEffectMenu extends PaginatedMenu<MenuHolder, Consum
             case final ConsumeEffect.PlaySound effect ->
                     ItemCreator.of(Material.JUKEBOX).name("<green>Play Sound").lore(
                             List.of(
-                                    "<dark_aqua>Sound <arrow> <secondary>" + effect.sound().asMinimalString(),
+                                    "<value>Sound <arrow> <secondary>" + effect.sound().asMinimalString(),
                                     "",
                                     "<yellow>Left-Click<gray> to remove this effect."
                             )
@@ -123,14 +123,14 @@ public final class ConsumableEffectMenu extends PaginatedMenu<MenuHolder, Consum
                 final List<String> lore;
                 if (effect.removeEffects().size() > 2) {
                     lore = new ArrayList<>();
-                    lore.add("<dark_aqua>Clears Effects <arrow>");
+                    lore.add("<value>Clears Effects <arrow>");
                     lore.addAll(WrapUtils.convertStringToList("<secondary>" + registrySetToString(effect.removeEffects())));
                     lore.addAll(List.of(
                             "",
                             "<yellow>Left-Click<gray> to remove this effect."
                     ));
                 } else lore = List.of(
-                        "<dark_aqua>Clears Effects <arrow> <secondary>" + registrySetToString(effect.removeEffects()),
+                        "<value>Clears Effects <arrow> <secondary>" + registrySetToString(effect.removeEffects()),
                         "",
                         "<yellow>Left-Click<gray> to remove this effect."
                 );
@@ -141,7 +141,7 @@ public final class ConsumableEffectMenu extends PaginatedMenu<MenuHolder, Consum
             case final ConsumeEffect.TeleportRandomly effect ->
                     ItemCreator.of(Material.CHORUS_FRUIT).name("<dark_purple>Random Teleport").lore(
                             List.of(
-                                    "<dark_aqua>Diameter <arrow> <secondary>" + effect.diameter(),
+                                    "<value>Diameter <arrow> <secondary>" + effect.diameter(),
                                     "",
                                     "<yellow>Left-Click<gray> to remove this effect."
                             )
@@ -152,6 +152,10 @@ public final class ConsumableEffectMenu extends PaginatedMenu<MenuHolder, Consum
 
     @Override
     public void postDisplay(MenuHolder holder) {
+        if (effects.isEmpty()) {
+            this.refresh();
+            return;
+        }
         updatePages(effects);
     }
 

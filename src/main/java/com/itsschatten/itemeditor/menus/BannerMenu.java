@@ -134,6 +134,11 @@ public final class BannerMenu extends PaginatedMenu<MenuHolder, Pattern> impleme
         return List.of(bannerButton, addPatternButton);
     }
 
+    @Override
+    public void postDisplay(MenuHolder user) {
+        updatePages(patterns);
+    }
+
     // Draws non-functional items to the menu.
     @Override
     public void drawExtra() {

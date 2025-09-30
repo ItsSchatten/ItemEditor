@@ -3,12 +3,14 @@ package com.itsschatten.itemeditor;
 import com.itsschatten.itemeditor.utils.ResolverListener;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
+import com.itsschatten.yggdrasil.items.ItemCreator;
 import com.itsschatten.yggdrasil.menus.MenuUtils;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.tag.Tag;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import net.minecraft.world.level.block.entity.FurnaceBlockEntity;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -35,6 +37,8 @@ public final class ItemEditorPlugin extends JavaPlugin {
                 .tag("primary", Tag.styling((b) -> b.color(TextColor.fromHexString("#F5D491"))))
                 // Secondary color.
                 .tag("secondary", Tag.styling((b) -> b.color(TextColor.fromHexString("#D8D8F6"))))
+                // Value color.
+                .tag("value", Tag.styling(b -> b.color(NamedTextColor.DARK_AQUA)))
                 // Information color and styling.
                 .tag("info", Tag.styling((b) -> b.color(NamedTextColor.GRAY).decorate(TextDecoration.ITALIC)))
                 .build());

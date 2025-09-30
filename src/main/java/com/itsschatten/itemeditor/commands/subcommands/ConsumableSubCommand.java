@@ -27,8 +27,18 @@ import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.commands.SetBlockCommand;
+import net.minecraft.world.entity.Display;
+import net.minecraft.world.level.block.BuddingAmethystBlock;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.craftbukkit.inventory.CraftItemType;
+import org.bukkit.craftbukkit.persistence.CraftPersistentDataAdapterContext;
+import org.bukkit.craftbukkit.util.CraftMagicNumbers;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.persistence.ListPersistentDataType;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
 
@@ -38,7 +48,6 @@ import java.util.function.BiConsumer;
 import java.util.function.UnaryOperator;
 import java.util.stream.IntStream;
 
-@SuppressWarnings({"UnstableApiUsage"})
 public final class ConsumableSubCommand extends BrigadierCommand {
 
     @Override
@@ -269,11 +278,11 @@ public final class ConsumableSubCommand extends BrigadierCommand {
 
                     Utils.tell(context, """
                             <primary>Your consumable:
-                            <dark_aqua>Particles</dark_aqua> <arrow> <secondary>{particles}</secondary>
-                            <dark_aqua>Animation</dark_aqua> <arrow> <secondary>{animation}</secondary>
-                            <dark_aqua>Time</dark_aqua> (<gray>(seconds)</gray>) <arrow> <secondary>{time}</secondary>
-                            <dark_aqua>Sound</dark_aqua> <arrow> <secondary>{sound}</secondary>
-                            <dark_aqua>Total Effects</dark_aqua> <arrow> <secondary>{total}</secondary> <hover:show_text:'<gray>Click to open the effects menu.'><click:run_command:'/ie consumable effects menu'><dark_gray>[Click to open Menu]"""
+                            <value>Particles</value> <arrow> <secondary>{particles}</secondary>
+                            <value>Animation</value> <arrow> <secondary>{animation}</secondary>
+                            <value>Time</value> (<gray>(seconds)</gray>) <arrow> <secondary>{time}</secondary>
+                            <value>Sound</value> <arrow> <secondary>{sound}</secondary>
+                            <value>Total Effects</value> <arrow> <secondary>{total}</secondary> <hover:show_text:'<gray>Click to open the effects menu.'><click:run_command:'/ie consumable effects menu'><dark_gray>[Click to open Menu]"""
                             .replace("{particles}", consumable.hasConsumeParticles() ? "<green>✔</green>" : "<red>✘</red>")
                             .replace("{animation}", consumable.animation().name())
                             .replace("{time}", StringHelper.conditionString(String.valueOf(consumable.consumeSeconds()), String.valueOf(consumable.consumeSeconds()).replace(".0", ""), (string) -> string.endsWith(".0")))

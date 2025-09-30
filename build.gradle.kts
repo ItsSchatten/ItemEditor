@@ -3,13 +3,13 @@ plugins {
     idea
 
     // Use Mojang mappings and a few other PaperAPI QOL.
-    id("io.papermc.paperweight.userdev") version "2.0.0-beta.16"
+    id("io.papermc.paperweight.userdev") version "2.0.0-beta.18"
 
     // Automatic lombok and delombok configuration
-    id("io.freefair.lombok") version "8.13.1"
+    id("io.freefair.lombok") version "9.0.0-rc2"
 
     // Shade libraries into one "UberJar"
-    id("com.gradleup.shadow") version "9.0.0-beta11"
+    id("com.gradleup.shadow") version "9.2.1"
 }
 
 // Used to configure which "path" we are compiling.
@@ -24,7 +24,6 @@ ext {
 group = "com.itsschatten"
 version = project.property("version")!! as String
 java.sourceCompatibility = JavaVersion.VERSION_21
-paperweight.reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.MOJANG_PRODUCTION
 
 repositories {
     // PaperMC.
@@ -40,7 +39,7 @@ repositories {
 }
 
 dependencies {
-    paperweight.paperDevBundle("1.21.5-R0.1-SNAPSHOT")
+    paperweight.paperDevBundle("1.21.8-R0.1-SNAPSHOT")
 
     implementation(platform("com.itsschatten:Yggdrasil-bom:1.0.2"))
     implementation("com.itsschatten:Yggdrasil") {
@@ -55,7 +54,7 @@ dependencies {
 
     compileOnly("com.itsschatten:Utilities-API:0.0.0-SNAPSHOT")
 
-    implementation("org.apache.commons:commons-text:1.13.1")
+    implementation("org.apache.commons:commons-text:1.14.0")
 
     testImplementation(platform("org.junit:junit-bom:5.11.0-M1"))
     testImplementation("org.junit.jupiter:junit-jupiter")

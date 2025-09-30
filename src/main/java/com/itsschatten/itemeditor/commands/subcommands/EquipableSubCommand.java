@@ -60,13 +60,13 @@ public final class EquipableSubCommand extends BrigadierCommand {
                             if (stack.hasData(DataComponentTypes.EQUIPPABLE)) {
                                 final Equippable equippable = stack.getData(DataComponentTypes.EQUIPPABLE);
                                 Utils.tell(user, "<primary>Your item is <secondary>equipable</secondary> in the slot <secondary>" + equippable.slot() + "</secondary>!");
-                                Utils.tell(user, "<dark_aqua>Sound <arrow> <secondary>" + equippable.equipSound().asString());
-                                Utils.tell(user, "<dark_aqua>Asset ID <arrow> <secondary>" + (equippable.assetId() == null ? "<red>None" : equippable.assetId().asString()));
-                                Utils.tell(user, "<dark_aqua>Camera Overlay <arrow> <secondary>" + (equippable.cameraOverlay() == null ? "<red>None" : equippable.cameraOverlay().asString()));
-                                Utils.tell(user, "<dark_aqua>Damage On Hurt <arrow> <secondary>" + equippable.damageOnHurt());
-                                Utils.tell(user, "<dark_aqua>Dispensable <arrow> <secondary>" + equippable.dispensable());
-                                Utils.tell(user, "<dark_aqua>Swappable <arrow> <secondary>" + equippable.swappable());
-                                Utils.tell(user, "<dark_aqua>Allowed Entities <arrow>" + (equippable.allowedEntities() == null ? "<red>None" : ""));
+                                Utils.tell(user, "<value>Sound <arrow> <secondary>" + equippable.equipSound().asString());
+                                Utils.tell(user, "<value>Asset ID <arrow> <secondary>" + (equippable.assetId() == null ? "<red>None" : equippable.assetId().asString()));
+                                Utils.tell(user, "<value>Camera Overlay <arrow> <secondary>" + (equippable.cameraOverlay() == null ? "<red>None" : equippable.cameraOverlay().asString()));
+                                Utils.tell(user, "<value>Damage On Hurt <arrow> <secondary>" + equippable.damageOnHurt());
+                                Utils.tell(user, "<value>Dispensable <arrow> <secondary>" + equippable.dispensable());
+                                Utils.tell(user, "<value>Swappable <arrow> <secondary>" + equippable.swappable());
+                                Utils.tell(user, "<value>Allowed Entities <arrow>" + (equippable.allowedEntities() == null ? "<red>None" : ""));
                                 if (equippable.allowedEntities() != null)
                                     equippable.allowedEntities().forEach(key -> Utils.tell(context, " <primary>◼ <secondary>" + key.key().asString()));
                             } else {

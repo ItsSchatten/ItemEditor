@@ -168,7 +168,7 @@ public final class MapSubCommand extends BrigadierCommand {
 
     @Contract(pure = true)
     private @NotNull String convert(final MapDecorations.@NotNull DecorationEntry entry) {
-        return "<dark_aqua>Type <arrow><secondary>" + entry.type() + "</secondary>" +
+        return "<value>Type <arrow><secondary>" + entry.type() + "</secondary>" +
                 "\nLocation <arrow><secondary>" + entry.x() + "<gray>,</gray> " + entry.z() + "</secondary>" +
                 "\nRotation <arrow><secondary>" + entry.rotation() + "f";
     }

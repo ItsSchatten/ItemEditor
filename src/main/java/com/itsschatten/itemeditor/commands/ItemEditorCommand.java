@@ -36,7 +36,7 @@ public final class ItemEditorCommand extends BrigadierCommand {
                 new ArmorTrimSubCommand(),
                 new AttributeSubCommand(),
                 new BannerSubCommand(),
-                // new BlocksAttacksSubCommand(), // TODO: Enable this when BlocksAttacks is completed.
+                new BlocksAttacksSubCommand(),
                 new BookSubCommand(),
                 new BreakSoundSubCommand(),
                 new BucketSubCommand(),

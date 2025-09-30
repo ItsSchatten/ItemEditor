@@ -12,7 +12,6 @@ import com.itsschatten.yggdrasil.menus.buttons.Button;
 import com.itsschatten.yggdrasil.menus.buttons.DynamicButton;
 import com.itsschatten.yggdrasil.menus.buttons.MenuTriggerButton;
 import com.itsschatten.yggdrasil.menus.types.PaginatedMenu;
-import com.itsschatten.yggdrasil.menus.types.interfaces.Animated;
 import com.itsschatten.yggdrasil.menus.utils.InventoryPosition;
 import com.itsschatten.yggdrasil.menus.utils.InventorySize;
 import com.itsschatten.yggdrasil.menus.utils.MenuHolder;
@@ -35,7 +34,7 @@ import java.util.*;
  * <br>
  * This menu does not allow custom hex colors.
  */
-public final class FireworkMenu extends PaginatedMenu<MenuHolder, FireworkEffect> implements Animated {
+public final class FireworkMenu extends PaginatedMenu<MenuHolder, FireworkEffect> {
 
     // The actual firework item, it's meta is updated when closing this menu.
     final ItemStack firework;
@@ -64,8 +63,8 @@ public final class FireworkMenu extends PaginatedMenu<MenuHolder, FireworkEffect
     // Animates the menu.
     // In this case, we update the page items in the menu.
     @Override
-    public void animate() {
-        cleanUpdatePages(effects);
+    public void postDisplay(MenuHolder user) {
+        updatePages(effects);
     }
 
     // Get a list of placeable InventoryPositions.
@@ -236,16 +235,16 @@ public final class FireworkMenu extends PaginatedMenu<MenuHolder, FireworkEffect
             }
         });
 
-        final String colors = String.join(", ", colorList);
+        final String colors = "<secondary>" + String.join(", ", colorList) + "</secondary>";
         final String fades = String.join(", ", fadesList);
 
         return """
-                <primary>Colors: <secondary>{colors}</secondary>
-                <primary>Fades: <secondary>{fades}</secondary>
+                <primary>Colors: {colors}
+                <primary>Fades: {fades}
                 <primary>Effects: <secondary>{effects}</secondary>"""
                 .replace("{effects}", !effect.hasFlicker() && !effect.hasTrail() ? "<red>none" : (effect.hasFlicker() ? "flicker" + (effect.hasTrail() ? ", " : "") : "") + (effect.hasTrail() ? "trail" : ""))
                 .replace("{colors}", WrapUtils.wrap(colors, 35, "|"))
-                .replace("{fades}", fades.isEmpty() ? "<red>none" : WrapUtils.wrap(fades, 35, "|"));
+                .replace("{fades}", fades.isEmpty() ? "<red>none" : WrapUtils.wrap("<secondary>" + fades + "</secondary>", 35, "|"));
     }
 
     // Called when clicking on a page item in the menu.
@@ -253,6 +252,7 @@ public final class FireworkMenu extends PaginatedMenu<MenuHolder, FireworkEffect
     public void onClickPageItem(MenuHolder user, FireworkEffect effect, @NotNull ClickType click) {
         // Always removed.
         effects.remove(effect);
+        removeValue(effect);
 
         // We are left-clicking, so we want to edit the effect.
         if (click.isLeftClick()) {

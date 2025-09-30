@@ -178,7 +178,7 @@ public final class BookSubCommand extends BrigadierCommand {
                                 return 1;
                             }
 
-                            Utils.tell(user, "<primary>Your item currently storing the following enchantments: <#D8D8F6>" + String.join("<gray>,</gray> ", meta.getStoredEnchants().entrySet().stream()
+                            Utils.tell(user, "<primary>Your item is currently storing the following enchantments: <#D8D8F6>" + String.join("<gray>,</gray> ", meta.getStoredEnchants().entrySet().stream()
                                     .map((entry) -> "<click:suggest_command:'/ie book " + entry.getKey().getKey().getKey() + " 0'><hover:show_text:'<gray><i>Click to suggest the command to remove this enchantment!'>" + entry.getKey().getKey().getKey().replace("_", " ") + " " + entry.getValue() + "</hover></click>").toList()));
                             Utils.tell(user, "<gray><i>Click an enchantment above to suggest the command to remove it!");
                             return 1;

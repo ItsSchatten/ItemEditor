@@ -98,8 +98,8 @@ public final class WeaponSubCommand extends BrigadierCommand {
 
         Utils.tell(context, """
                 <primary>Your Weapon Values:
-                <secondary>Damage Per Attack: <dark_aqua>{damage}</dark_aqua>
-                <secondary>Disables Block For (seconds): <dark_aqua>{seconds}</dark_aqua> second(s)"""
+                <secondary>Damage Per Attack: <value>{damage}</value>
+                <secondary>Disables Block For (seconds): <value>{seconds}</value> second(s)"""
                 .replace("{damage}", String.valueOf(weapon.itemDamagePerAttack()))
                 .replace("{seconds}", String.valueOf(weapon.disableBlockingForSeconds()))
         );

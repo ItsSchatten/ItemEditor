@@ -73,20 +73,21 @@ public final class ConsumableEffectCreateMenu extends PageMenu<MenuHolder> {
     @Override
     public @NotNull @Unmodifiable List<MenuPage<MenuHolder>> makePages() {
         final List<String> lore = new ArrayList<>();
-        if (options instanceof final ConsumeEffectOptions.ApplyStatusEffectsOptions apply) {
-            final List<PotionEffect> effects = new ArrayList<>(apply.effects());
-            lore.add("<dark_aqua>Effects <arrow> <secondary>" + StringHelper.firstEffect(effects));
+        if (options instanceof ConsumeEffectOptions.ApplyStatusEffectsOptions(
+                final List<PotionEffect> effects, final float probability
+        )) {
+            lore.add("<value>Effects <arrow> <secondary>" + StringHelper.firstEffect(effects));
             if (!effects.isEmpty()) {
                 effects.forEach(effect -> lore.add("<secondary>" + StringHelper.potionEffectToString(effect)));
             }
             lore.add("");
-            lore.add("<dark_aqua>Probability <arrow> <secondary>" + (apply.probability() * 100F) + "%");
+            lore.add("<value>Probability <arrow> <secondary>" + (probability * 100F) + "%");
             lore.add("<yellow>Click<secondary> to change this list.");
         } else if (options instanceof ConsumeEffectOptions.RemoveStatusEffectsOptions(
                 final List<PotionEffectType> effects
         )) {
             final List<PotionEffectType> fixed = new ArrayList<>(effects);
-            lore.add("<dark_aqua>Effects <arrow> <secondary>" + StringHelper.firstTwoEffectTypes(fixed));
+            lore.add("<value>Effects <arrow> <secondary>" + StringHelper.firstTwoEffectTypes(fixed));
             if (!effects.isEmpty()) {
                 fixed.forEach(effect -> lore.add("<secondary>" + effect.key().asMinimalString()));
             }
@@ -139,7 +140,7 @@ public final class ConsumableEffectCreateMenu extends PageMenu<MenuHolder> {
                                 .position(0, 4).build())
                         .button(Buttons.menuTrigger()
                                 .menu((holder, clickType) -> new SoundListMenu(this))
-                                .item(() -> ItemCreator.of(Material.NOTE_BLOCK).display("<primary>Sound").lore("<secondary>The sound to play.", "", "<dark_aqua>Sound <arrow> <secondary>" + (options != null && options instanceof ConsumeEffectOptions.PlaySoundOptions(
+                                .item(() -> ItemCreator.of(Material.NOTE_BLOCK).display("<primary>Sound").lore("<secondary>The sound to play.", "", "<value>Sound <arrow> <secondary>" + (options != null && options instanceof ConsumeEffectOptions.PlaySoundOptions(
                                         net.kyori.adventure.key.Key sound
                                 ) ? sound.asMinimalString() : "entity.generic.eat"), "", "<yellow>Click <primary>to change the sound!"))
                                 .position(3, 4)
@@ -167,7 +168,7 @@ public final class ConsumableEffectCreateMenu extends PageMenu<MenuHolder> {
                                 .pageNumber(5)
                                 .position(0, 8).build())
                         .button(Buttons.button()
-                                .item(() -> ItemCreator.of(Material.OAK_SIGN).display("<primary>Diameter").lore("<secondary>The diameter of of the random teleport.", "", "<dark_aqua>Diameter <arrow> <secondary>" + (options != null && options instanceof ConsumeEffectOptions.RandomTeleportOptions(
+                                .item(() -> ItemCreator.of(Material.OAK_SIGN).display("<primary>Diameter").lore("<secondary>The diameter of of the random teleport.", "", "<value>Diameter <arrow> <secondary>" + (options != null && options instanceof ConsumeEffectOptions.RandomTeleportOptions(
                                         float diameter
                                 ) ? String.valueOf(diameter).replace(".0", "") : "16"), "", "<yellow>Click <primary>to change the diameter!"))
                                 .onClick((holder, menu, click) -> {
@@ -177,7 +178,7 @@ public final class ConsumableEffectCreateMenu extends PageMenu<MenuHolder> {
                                             .clickHandler((integer, snapshot) -> CompletableFuture.completedFuture(Collections.singletonList(Response.openMenu(menu, holder))))
                                             .onClose(snapshot -> {
                                                 configuring = false;
-                                                if (!snapshot.text().isBlank() && NumberUtils.isNumber(snapshot.text())) {
+                                                if (!snapshot.text().isBlank() && NumberUtils.isCreatable(snapshot.text())) {
                                                     options = new ConsumeEffectOptions.RandomTeleportOptions(NumberUtils.toFloat(snapshot.text()));
                                                 }
                                             })
@@ -196,7 +197,7 @@ public final class ConsumableEffectCreateMenu extends PageMenu<MenuHolder> {
     }
 
     @Override
-    public void beforeReturn(MenuHolder holder) {
+    public void beforeDispose(MenuHolder holder) {
         passOptions();
     }
 

@@ -15,10 +15,7 @@ import com.itsschatten.yggdrasil.menus.types.StandardMenu;
 import com.itsschatten.yggdrasil.menus.utils.MenuHolder;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import org.apache.commons.lang3.math.NumberUtils;
-import org.bukkit.Bukkit;
-import org.bukkit.Keyed;
-import org.bukkit.Material;
-import org.bukkit.Registry;
+import org.bukkit.*;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -177,7 +174,7 @@ public final class EffectCreationMenu extends StandardMenu<MenuHolder> {
     }
 
     @Override
-    public void beforeReturn(MenuHolder holder) {
+    public void beforeDispose(MenuHolder holder) {
         pass();
     }
 

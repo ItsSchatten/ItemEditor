@@ -66,7 +66,7 @@ public class DeathProtectionSubCommand extends BrigadierCommand {
         switch (consumeEffect) {
             case final ConsumeEffect.ApplyStatusEffects effect -> {
                 final List<PotionEffect> effects = effect.effects();
-                builder.append("<dark_aqua><b>Type</b> <arrow> <secondary>").append("Apply Status Effects").append("</secondary><br>")
+                builder.append("<value><b>Type</b> <arrow> <secondary>").append("Apply Status Effects").append("</secondary><br>")
                         .append("<b>Probability</b> <arrow> <secondary>").append(effect.probability() * 100F).append("</secondary><br>")
                         .append("<b>Effects</b> <arrow> <secondary>").append(StringHelper.firstEffect(effects)).append("</secondary><br>");
 
@@ -75,14 +75,14 @@ public class DeathProtectionSubCommand extends BrigadierCommand {
                 }
             }
             case final ConsumeEffect.ClearAllStatusEffects ignored ->
-                    builder.append("<dark_aqua><b>Type</b> <arrow> <secondary>").append("Clear All Status Effects").append("</secondary><br>")
+                    builder.append("<value><b>Type</b> <arrow> <secondary>").append("Clear All Status Effects").append("</secondary><br>")
                             .append("<primary>All of the consumers effects will be cleared.");
             case final ConsumeEffect.PlaySound effect ->
-                    builder.append("<dark_aqua><b>Type</b> <arrow> <secondary>").append("Play Sound").append("</secondary><br>")
+                    builder.append("<value><b>Type</b> <arrow> <secondary>").append("Play Sound").append("</secondary><br>")
                             .append("<b>Sound</b> <arrow> <secondary>").append(effect.sound().asMinimalString()).append("</secondary><br>");
             case final ConsumeEffect.RemoveStatusEffects effect -> {
                 final List<PotionEffectType> effects = new ArrayList<>(effect.removeEffects().resolve(Registry.EFFECT));
-                builder.append("<dark_aqua><b>Type</b> <arrow> <secondary>").append("Remove Status Effects").append("</secondary><br>")
+                builder.append("<value><b>Type</b> <arrow> <secondary>").append("Remove Status Effects").append("</secondary><br>")
                         .append("<b>Effects</b> <arrow> <secondary>").append(StringHelper.firstTwoEffectTypes(effects)).append("</secondary><br>");
 
                 if (!effects.isEmpty()) {
@@ -95,7 +95,7 @@ public class DeathProtectionSubCommand extends BrigadierCommand {
             }
             case final ConsumeEffect.TeleportRandomly effect -> {
                 final String diameter = String.valueOf(effect.diameter());
-                builder.append("<dark_aqua><b>Type</b> <arrow> <secondary>").append("Random Teleport").append("</secondary><br>")
+                builder.append("<value><b>Type</b> <arrow> <secondary>").append("Random Teleport").append("</secondary><br>")
                         .append("<b>Diameter</b> <arrow> <secondary>")
                         .append(StringHelper.conditionString(diameter, diameter.replace(".0", ""), (string) -> string.endsWith(".0")))
                         .append("</secondary><br>");
@@ -263,7 +263,7 @@ public class DeathProtectionSubCommand extends BrigadierCommand {
 
                     Utils.tell(context, """
                             <primary>Your item can protect against death:
-                            <dark_aqua>Total Effects</dark_aqua> <arrow> <secondary>{total}</secondary> <hover:show_text:'<gray>Click to open the effects menu.'><click:run_command:'/ie consumable effects menu'><dark_gray>[Click to open Menu]"""
+                            <value>Total Effects</value> <arrow> <secondary>{total}</secondary> <hover:show_text:'<gray>Click to open the effects menu.'><click:run_command:'/ie consumable effects menu'><dark_gray>[Click to open Menu]"""
                             .replace("{total}", String.valueOf(consumable.deathEffects().size()))
                     );
                     return 1;
