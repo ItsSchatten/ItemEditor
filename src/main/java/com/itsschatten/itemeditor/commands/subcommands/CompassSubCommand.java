@@ -95,22 +95,14 @@ public final class CompassSubCommand extends BrigadierCommand {
         }
 
         // Get the item's meta and check if it's null, it really shouldn't be but safety.
-        if (!(stack.getItemMeta() instanceof CompassMeta)) {
+        if (!(stack.getItemMeta() instanceof CompassMeta meta)) {
             Utils.tell(user, "<red>You are not holding a compass!");
             return 0;
         }
 
-        // Temporary solution to actually reset a lodestone compass back to a normal compass.
-        final net.minecraft.world.item.ItemStack nms = CraftItemStack.asNMSCopy(stack);
-        nms.remove(DataComponents.LODESTONE_TRACKER);
-
-        user.getInventory().setItemInMainHand(nms.asBukkitMirror());
-
-        // Commented out as this does not work for Paper servers,
-        // but leaving this here in the event the bug is patched.
-        //meta.setLodestone(null);
-        //meta.setLodestoneTracked(true);
-        //stack.setItemMeta(meta);
+        meta.setLodestone(null);
+        meta.setLodestoneTracked(true);
+        stack.setItemMeta(meta);
         return 1;
     }
 

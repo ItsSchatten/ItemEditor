@@ -1,5 +1,6 @@
 package com.itsschatten.itemeditor.commands;
 
+import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -14,6 +15,7 @@ public final class DebugSubCommand extends BrigadierCommand {
     public LiteralArgumentBuilder<CommandSourceStack> command() {
         return literal("debug")
                 .executes(context -> {
+                    context.getSource().getSender().addAttachment(Utils.getInstance()).setPermission("minecraft.command.teammsg", false);
                     // This will ALWAYS return 1 as this command is built to always do something.
                     return 1;
                 });

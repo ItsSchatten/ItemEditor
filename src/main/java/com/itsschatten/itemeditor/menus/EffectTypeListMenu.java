@@ -10,8 +10,9 @@ import com.itsschatten.yggdrasil.items.UtilityItems;
 import com.itsschatten.yggdrasil.items.manipulators.ColorManipulator;
 import com.itsschatten.yggdrasil.items.manipulators.SkullManipulator;
 import com.itsschatten.yggdrasil.menus.Menu;
-import com.itsschatten.yggdrasil.menus.buttons.Button;
 import com.itsschatten.yggdrasil.menus.buttons.Buttons;
+import com.itsschatten.yggdrasil.menus.buttons.impl.Button;
+import com.itsschatten.yggdrasil.menus.buttons.interfaces.IButton;
 import com.itsschatten.yggdrasil.menus.buttons.premade.ReturnButton;
 import com.itsschatten.yggdrasil.menus.types.PaginatedMenu;
 import com.itsschatten.yggdrasil.menus.utils.InventorySize;
@@ -25,6 +26,8 @@ import org.bukkit.event.inventory.ClickType;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
+import org.jspecify.annotations.NonNull;
 
 import java.util.*;
 
@@ -45,7 +48,7 @@ public final class EffectTypeListMenu extends PaginatedMenu<MenuHolder, PotionEf
     }
 
     @Override
-    public List<Button<MenuHolder>> makeButtons() {
+    public @NonNull @Unmodifiable List<IButton<MenuHolder>> makeButtons() {
         if (getParent() instanceof ConsumableEffectCreateMenu) {
             return List.of(Buttons.menuTrigger()
                     .item(ItemCreator.of(Material.PLAYER_HEAD).name("<green>New Effect Type").lore("Add a new effect type.").manipulator(new SkullManipulator(SkinTexture.of(UUID.fromString("934efd8c-1026-4ced-b56b-d9ba91221bbb"), "b056bc1244fcff99344f12aba42ac23fee6ef6e3351d27d273c1572531f"))).supplier())
@@ -57,7 +60,7 @@ public final class EffectTypeListMenu extends PaginatedMenu<MenuHolder, PotionEf
     }
 
     @Override
-    public @Nullable ReturnButton.ReturnButtonBuilder<MenuHolder> getReturnButton() {
+    public @Nullable Button.ButtonBuilder<MenuHolder, ?, ?> getReturnButton() {
         return Objects.requireNonNull(super.getReturnButton()).position(rows() - 1, 0);
     }
 
@@ -67,12 +70,12 @@ public final class EffectTypeListMenu extends PaginatedMenu<MenuHolder, PotionEf
     }
 
     @Override
-    public ItemCreator convertToStack(@NotNull PotionEffectType object) {
+    public ItemCreator.ItemCreatorBuilder convertToStack(@NotNull PotionEffectType object) {
         return ItemCreator.of(Material.POTION)
                 .display("<primary>" + object.key().asMinimalString())
                 .lore("<yellow>Click</yellow> to remove.")
                 .options(ItemOptions.builder().hiddenComponent(DataComponentTypes.POTION_CONTENTS))
-                .manipulator(new ColorManipulator(object.getColor())).build();
+                .manipulator(new ColorManipulator(object.getColor()));
     }
 
     @Override
@@ -98,10 +101,10 @@ public final class EffectTypeListMenu extends PaginatedMenu<MenuHolder, PotionEf
             removeValue(object);
         } else if (getParent() instanceof EffectTypeListMenu type) {
             type.types.add(object);
-            getParent().switchMenu(user, this);
+            getParent().switchTo(user);
         } else if (getParent() instanceof EffectCreationMenu menu) {
             menu.effect = object;
-            getParent().switchMenu(user, this);
+            getParent().switchTo(user);
         }
     }
 }

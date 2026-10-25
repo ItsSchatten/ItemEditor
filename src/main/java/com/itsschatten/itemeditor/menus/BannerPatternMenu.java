@@ -4,11 +4,10 @@ import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.items.ItemCreator;
 import com.itsschatten.yggdrasil.items.ItemOptions;
 import com.itsschatten.yggdrasil.items.UtilityItems;
-import com.itsschatten.yggdrasil.menus.Menu;
-import com.itsschatten.yggdrasil.menus.buttons.AnimatedButton;
-import com.itsschatten.yggdrasil.menus.buttons.Button;
+import com.itsschatten.yggdrasil.menus.buttons.Buttons;
+import com.itsschatten.yggdrasil.menus.buttons.impl.Button;
+import com.itsschatten.yggdrasil.menus.buttons.interfaces.IButton;
 import com.itsschatten.yggdrasil.menus.buttons.premade.NavigationButton;
-import com.itsschatten.yggdrasil.menus.buttons.premade.ReturnButton;
 import com.itsschatten.yggdrasil.menus.types.PaginatedMenu;
 import com.itsschatten.yggdrasil.menus.types.interfaces.Animated;
 import com.itsschatten.yggdrasil.menus.utils.InventoryPosition;
@@ -26,7 +25,6 @@ import org.bukkit.block.banner.PatternType;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BannerMeta;
-import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -76,47 +74,31 @@ public final class BannerPatternMenu extends PaginatedMenu<MenuHolder, PatternTy
 
     // Sets the menu position of the return button to where a close button will be by default.
     @Override
-    public @Nullable ReturnButton.ReturnButtonBuilder<MenuHolder> getReturnButton() {
-        return Objects.requireNonNull(super.getReturnButton()).position(Objects.requireNonNull(getCloseButton()).build().getPosition());
+    public @Nullable Button.ButtonBuilder<MenuHolder, ?, ?> getReturnButton() {
+        return Objects.requireNonNull(super.getReturnButton()).position(Objects.requireNonNull(getCloseButton()).build().position());
     }
 
     // Utility method to quickly create a DyeColor button from an integer value, usually the ordinal from the DyeColor enum.
-    private @NotNull Button<MenuHolder> makeButton(final int i) {
+    private @NotNull IButton<MenuHolder> makeButton(final int i) {
         final DyeColor color = DyeColor.values()[i];
 
         // This is an animated button, this button updates every second.
-        return new AnimatedButton<>() {
-            @Override
-            public void onClicked(MenuHolder user, Menu<MenuHolder> menu, ClickType type) {
-                // Set our selected dye color to the color found based on the integer.
-                BannerPatternMenu.this.dyeColor = color;
-            }
-
-            @Contract(pure = true)
-            @Override
-            public ItemCreator createItem() {
-                // Creates the item based on the color name.
-                return ItemCreator.of(Material.matchMaterial(color.name() + "_DYE"))
+        return Buttons.animated().position(InventoryPosition.fromSlot(i + (9 * 3)))
+                .item(() -> ItemCreator.of(Objects.requireNonNull(Material.matchMaterial(color.name() + "_DYE")))
                         .name("<#" + Integer.toHexString(color.getColor().asRGB()) + ">" + WordUtils.capitalizeFully(color.name().replace("_", " ")))
                         .lore(List.of("<yellow>Left-Click<gray> to use this color."))
-                        .options(ItemOptions.builder().glow(color.equals(dyeColor)).build()).build();
-            }
-
-            @Contract(" -> new")
-            @Override
-            public @NotNull InventoryPosition getPosition() {
-                // Set the slot with the provided integer and then add 27 to it.
-                return InventoryPosition.fromSlot(i + (9 * 3));
-            }
-        };
+                        .options(ItemOptions.builder().glow(color.equals(dyeColor)).build())
+                ).onClick((holder, click) -> {
+                    this.dyeColor = color;
+                }).build();
     }
 
     // Makes and registers the dye color buttons.
     @Override
-    public @NotNull List<Button<MenuHolder>> makeButtons() {
-        final List<Button<MenuHolder>> buttons = new ArrayList<>();
+    public @NotNull List<IButton<MenuHolder>> makeButtons() {
+        final List<IButton<MenuHolder>> buttons = new ArrayList<>();
         for (int i = 0; i < DyeColor.values().length; i++) {
-            final Button<MenuHolder> colorButton = makeButton(i);
+            final IButton<MenuHolder> colorButton = makeButton(i);
             buttons.add(colorButton);
         }
         return buttons;
@@ -130,7 +112,7 @@ public final class BannerPatternMenu extends PaginatedMenu<MenuHolder, PatternTy
 
     // Method that converts the PatternType to an item.
     @Override
-    public ItemCreator convertToStack(PatternType pattern) {
+    public ItemCreator.ItemCreatorBuilder convertToStack(PatternType pattern) {
         // Make an ItemStack based on the pattern.
         // If the pattern is selected, we make the banner purple or pink, depending on the dye color.
         // If not selected, we make the banner black or white, depending on the dye color.
@@ -160,7 +142,7 @@ public final class BannerPatternMenu extends PaginatedMenu<MenuHolder, PatternTy
         return ItemCreator.of(convertBanner)
                 .name("<primary>" + WordUtils.capitalizeFully(bannerText.substring(bannerText.indexOf(":") + 1).replace("_", " ")))
                 .options(ItemOptions.builder().hiddenComponent(DataComponentTypes.BANNER_PATTERNS).build())
-                .lore(lore).build();
+                .lore(lore);
     }
 
     // If we click a page item (a banner pattern), set our selected pattern to it.
@@ -190,7 +172,7 @@ public final class BannerPatternMenu extends PaginatedMenu<MenuHolder, PatternTy
     @Override
     public void onClose(MenuHolder user) {
         // We aren't opening a new menu, so open our parent.
-        Bukkit.getScheduler().runTaskLater(Utils.getInstance(), () -> menu.switchMenu(user, this), 1L);
+        Bukkit.getScheduler().runTaskLater(Utils.getInstance(), () -> menu.switchTo(user), 1L);
 
         // We have no selected, ignore it and send a message to the player, so they know no new pattern was added.
         if (selected == null) {
@@ -209,17 +191,17 @@ public final class BannerPatternMenu extends PaginatedMenu<MenuHolder, PatternTy
     }
 
     @Override
-    public NavigationButton.NavigationButtonBuilder<MenuHolder> getCounterButton() {
-        return Objects.requireNonNull(super.getCounterButton()).position(InventoryPosition.of(2, 4));
+    public NavigationButton.@org.jspecify.annotations.Nullable NavigationButtonBuilder<MenuHolder, ?, ?> getCounterButton() {
+        return Objects.requireNonNull(super.getCounterButton()).position(2, 4);
     }
 
     @Override
-    public NavigationButton.NavigationButtonBuilder<MenuHolder> getPreviousButton() {
+    public NavigationButton.NavigationButtonBuilder<MenuHolder, ?, ?> getPreviousButton() {
         return Objects.requireNonNull(super.getPreviousButton()).position(InventoryPosition.of(2, 3));
     }
 
     @Override
-    public NavigationButton.NavigationButtonBuilder<MenuHolder> getNextButton() {
+    public NavigationButton.NavigationButtonBuilder<MenuHolder, ?, ?> getNextButton() {
         return Objects.requireNonNull(super.getNextButton()).position(InventoryPosition.of(2, 5));
     }
 

@@ -9,10 +9,10 @@ import com.itsschatten.yggdrasil.items.ItemCreator;
 import com.itsschatten.yggdrasil.items.ItemOptions;
 import com.itsschatten.yggdrasil.items.UtilityItems;
 import com.itsschatten.yggdrasil.items.manipulators.ColorManipulator;
-import com.itsschatten.yggdrasil.menus.buttons.Button;
 import com.itsschatten.yggdrasil.menus.buttons.Buttons;
+import com.itsschatten.yggdrasil.menus.buttons.impl.Button.ButtonBuilder;
+import com.itsschatten.yggdrasil.menus.buttons.interfaces.IButton;
 import com.itsschatten.yggdrasil.menus.buttons.premade.PageNavigationButton;
-import com.itsschatten.yggdrasil.menus.buttons.premade.ReturnButton;
 import com.itsschatten.yggdrasil.menus.types.PageMenu;
 import com.itsschatten.yggdrasil.menus.utils.InventoryPosition;
 import com.itsschatten.yggdrasil.menus.utils.InventorySize;
@@ -31,6 +31,7 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
+import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -60,7 +61,7 @@ public final class ConsumableEffectCreateMenu extends PageMenu<MenuHolder> {
 
     @Contract(pure = true)
     @Override
-    public @NotNull @Unmodifiable List<Button<MenuHolder>> makeButtons() {
+    public @NotNull @Unmodifiable List<IButton<MenuHolder>> makeButtons() {
         return List.of();
     }
 
@@ -100,7 +101,7 @@ public final class ConsumableEffectCreateMenu extends PageMenu<MenuHolder> {
         return List.of(
                 MenuPage.builder()
                         .navButton(PageNavigationButton.builder()
-                                .runnable((holder, menu, click) -> options = null)
+                                .runnable((holder, click) -> options = null)
                                 .pageNumber(1)
                                 .item((page) -> ItemCreator.of(Material.POTION).display("<light_purple>Apply Status Effects").lore("<secondary>When eaten your consumable can apply", "<secondary>a list of potion effects to the consumer.").options(ItemOptions.builder().hiddenComponent(DataComponentTypes.POTION_CONTENTS).glow(page == 1).build()).manipulator(new ColorManipulator("#ff55ff")).supplier())
                                 .position(0, 0).build())
@@ -112,14 +113,14 @@ public final class ConsumableEffectCreateMenu extends PageMenu<MenuHolder> {
                         .build(),
                 MenuPage.builder()
                         .navButton(PageNavigationButton.builder()
-                                .runnable((holder, menu, click) -> options = null)
+                                .runnable((holder, click) -> options = null)
                                 .item((page) -> ItemCreator.of(Material.MILK_BUCKET).display("Clear All Effects").lore("<secondary>When eaten your consumable will remove", "<secondary>all status effects from the consumer.").options(ItemOptions.builder().glow(page == 2).build()).supplier())
                                 .pageNumber(2)
                                 .position(0, 2).build())
                         .button(Buttons.dynamic()
                                 .item(() -> ItemCreator.of(options instanceof ConsumeEffectOptions.ClearAllStatusEffectsOptions ? Material.BUCKET : Material.MILK_BUCKET)
                                         .name("<green>Click to Apply").lore("<secondary>Click to apply the clear all effects", "<secondary>consume effect."))
-                                .onClick((holder, menu, click) -> {
+                                .onClick((holder, click) -> {
                                     if (options instanceof ConsumeEffectOptions.ClearAllStatusEffectsOptions) {
                                         holder.tell("<green>This effect is already selected! <gold>Switch pages if you wish to remove it or close/click the return button to add the effect.");
                                         return;
@@ -134,7 +135,7 @@ public final class ConsumableEffectCreateMenu extends PageMenu<MenuHolder> {
                         .build(),
                 MenuPage.builder()
                         .navButton(PageNavigationButton.builder()
-                                .runnable((holder, menu, click) -> options = null)
+                                .runnable((holder, click) -> options = null)
                                 .item((page) -> ItemCreator.of(Material.JUKEBOX).display("<green>Play Sound").lore("<secondary>When eaten your consumable will play", "<secondary>a sound to the consumer.").options(ItemOptions.builder().glow(page == 3).build()).supplier())
                                 .pageNumber(3)
                                 .position(0, 4).build())
@@ -148,7 +149,7 @@ public final class ConsumableEffectCreateMenu extends PageMenu<MenuHolder> {
                         .build(),
                 MenuPage.builder()
                         .navButton(PageNavigationButton.builder()
-                                .runnable((holder, menu, click) -> options = null)
+                                .runnable((holder, click) -> options = null)
                                 .item((page) -> ItemCreator.of(Material.BOWL).display("<red>Remove Status Effects").lore("<secondary>When eaten your consumable will remove", "<secondary>a list of potion effects from the consumer.").options(ItemOptions.builder().glow(page == 4).build()).supplier())
                                 .pageNumber(4)
                                 .position(0, 6).build())
@@ -163,7 +164,7 @@ public final class ConsumableEffectCreateMenu extends PageMenu<MenuHolder> {
                         .build(),
                 MenuPage.builder()
                         .navButton(PageNavigationButton.builder()
-                                .runnable((holder, menu, click) -> options = null)
+                                .runnable((holder, click) -> options = null)
                                 .item((page) -> ItemCreator.of(Material.CHORUS_FRUIT).display("<dark_purple>Random Teleport").lore("<secondary>When eaten your consumable will randomly", "<secondary>teleport the consumer within a set diameter.").options(ItemOptions.builder().glow(page == 5).build()).supplier())
                                 .pageNumber(5)
                                 .position(0, 8).build())
@@ -171,18 +172,18 @@ public final class ConsumableEffectCreateMenu extends PageMenu<MenuHolder> {
                                 .item(() -> ItemCreator.of(Material.OAK_SIGN).display("<primary>Diameter").lore("<secondary>The diameter of of the random teleport.", "", "<value>Diameter <arrow> <secondary>" + (options != null && options instanceof ConsumeEffectOptions.RandomTeleportOptions(
                                         float diameter
                                 ) ? String.valueOf(diameter).replace(".0", "") : "16"), "", "<yellow>Click <primary>to change the diameter!"))
-                                .onClick((holder, menu, click) -> {
+                                .onClick((holder, click) -> {
                                     configuring = true;
                                     AnvilGUI.builder().holder(holder).plugin(Utils.getInstance())
                                             .title("Enter Diameter")
-                                            .clickHandler((integer, snapshot) -> CompletableFuture.completedFuture(Collections.singletonList(Response.openMenu(menu, holder))))
+                                            .clickHandler((integer, snapshot) -> CompletableFuture.completedFuture(Collections.singletonList(Response.openMenu(this, holder))))
                                             .onClose(snapshot -> {
                                                 configuring = false;
                                                 if (!snapshot.text().isBlank() && NumberUtils.isCreatable(snapshot.text())) {
                                                     options = new ConsumeEffectOptions.RandomTeleportOptions(NumberUtils.toFloat(snapshot.text()));
                                                 }
                                             })
-                                            .response(Response.openMenu(menu, holder))
+                                            .response(Response.openMenu(this, holder))
                                             .open(holder);
                                 })
                                 .position(3, 4)
@@ -192,22 +193,22 @@ public final class ConsumableEffectCreateMenu extends PageMenu<MenuHolder> {
     }
 
     @Override
-    public @Nullable ReturnButton.ReturnButtonBuilder<MenuHolder> getReturnButton() {
+    public @Nullable ButtonBuilder<MenuHolder, ?, ?> getReturnButton() {
         return Objects.requireNonNull(super.getReturnButton()).position(InventoryPosition.of(rows() - 1, 0));
     }
 
     @Override
-    public void beforeDispose(MenuHolder holder) {
+    public void beforeDispose(@NonNull MenuHolder holder) {
         passOptions();
     }
 
     @Override
-    public void onClose(MenuHolder user) {
+    public void onClose(@NonNull MenuHolder user) {
         if (!configuring) {
             passOptions();
 
             // A tick must delay this. Otherwise, the close call will be called continuously.
-            Bukkit.getScheduler().runTaskLater(Utils.getInstance(), () -> effectsMenu.switchMenu(user, this), 1L);
+            Bukkit.getScheduler().runTaskLater(Utils.getInstance(), () -> effectsMenu.switchTo(user), 1L);
         }
     }
 

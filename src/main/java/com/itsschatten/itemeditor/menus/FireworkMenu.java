@@ -6,11 +6,8 @@ import com.itsschatten.yggdrasil.items.ItemOptions;
 import com.itsschatten.yggdrasil.items.SkinTexture;
 import com.itsschatten.yggdrasil.items.UtilityItems;
 import com.itsschatten.yggdrasil.items.manipulators.SkullManipulator;
-import com.itsschatten.yggdrasil.menus.Menu;
-import com.itsschatten.yggdrasil.menus.buttons.AnimatedButton;
-import com.itsschatten.yggdrasil.menus.buttons.Button;
-import com.itsschatten.yggdrasil.menus.buttons.DynamicButton;
-import com.itsschatten.yggdrasil.menus.buttons.MenuTriggerButton;
+import com.itsschatten.yggdrasil.menus.buttons.Buttons;
+import com.itsschatten.yggdrasil.menus.buttons.interfaces.IButton;
 import com.itsschatten.yggdrasil.menus.types.PaginatedMenu;
 import com.itsschatten.yggdrasil.menus.utils.InventoryPosition;
 import com.itsschatten.yggdrasil.menus.utils.InventorySize;
@@ -88,102 +85,63 @@ public final class FireworkMenu extends PaginatedMenu<MenuHolder, FireworkEffect
 
     // Makes and registers buttons for this menu.
     @Override
-    public List<Button<MenuHolder>> makeButtons() {
+    public List<IButton<MenuHolder>> makeButtons() {
         // The power button, updates the firework's power.
         // This button is dynamic, it will update itself after 1 second after being clicked.
-        final Button<MenuHolder> powerButton = new DynamicButton<>() {
-            @Override
-            public void onClicked(@NotNull MenuHolder user, Menu menu, @NotNull ClickType type) {
-                // If we are right-clicking, we want to decrease the power, to a minimum of 0,
-                if (type.isRightClick()) {
-                    meta.setPower(Math.max(meta.getPower() - 1, 0));
-                } else {
-                    // We aren't right-clicking, we want to increase the power to a maximum of 4.
-                    meta.setPower(Math.min(4, meta.getPower() + 1));
-                }
-            }
-
-            @Override
-            public ItemCreator updateStack() {
-                return ItemCreator.of(Material.GUNPOWDER).amount(Math.max(meta.getPower(), 1)).name("<primary>Firework Power")
+        final IButton<MenuHolder> powerButton = Buttons.dynamic()
+                .item(() -> ItemCreator.of(Material.GUNPOWDER).amount(Math.max(meta.getPower(), 1)).name("<primary>Firework Power")
                         .lore(List.of(
                                 "<primary>Power: <secondary>" + meta.getPower(),
                                 "",
                                 "<yellow>Left-Click <gray>to increment power by one.",
                                 "<yellow>Right-Click <gray>to decrement power by one."
-                        )).build();
-            }
-
-            @Override
-            public ItemCreator createItem() {
-                return updateStack();
-            }
-
-            @Contract(" -> new")
-            @Override
-            public @NotNull InventoryPosition getPosition() {
-                return InventoryPosition.of(5, 1);
-            }
-        };
+                        )))
+                .onClick((holder, click) -> {
+                    // If we are right-clicking, we want to decrease the power, to a minimum of 0,
+                    if (click.isRightClick()) {
+                        meta.setPower(Math.max(meta.getPower() - 1, 0));
+                    } else {
+                        // We aren't right-clicking, we want to increase the power to a maximum of 4.
+                        meta.setPower(Math.min(4, meta.getPower() + 1));
+                    }
+                })
+                .position(5, 1)
+                .build();
 
         // http://textures.minecraft.net/texture/b056bc1244fcff99344f12aba42ac23fee6ef6e3351d27d273c1572531f
         // Opens the FireworkEffectMenu.
-        final Button<MenuHolder> addEffect = new MenuTriggerButton<>() {
-            @Override
-            public @NotNull ItemCreator createItem() {
-                return ItemCreator.of(Material.PLAYER_HEAD)
+        final IButton<MenuHolder> addEffect = Buttons.menuTrigger()
+                .item(() -> ItemCreator.of(Material.PLAYER_HEAD)
                         .name("<primary>Add Effect")
                         .lore(List.of("Adds a new firework effect to your firework."))
                         .manipulator(new SkullManipulator(new SkinTexture(UUID.fromString("934efd8c-1026-4ced-b56b-d9ba91221bbb"), "b056bc1244fcff99344f12aba42ac23fee6ef6e3351d27d273c1572531f")))
-                        .build();
-            }
-
-            @Contract("_, _ -> new")
-            @Override
-            public @NotNull Menu<MenuHolder> getMenu(MenuHolder user, ClickType type) {
-                return new FireworkEffectMenu(FireworkMenu.this, null);
-            }
-
-            @Contract(" -> new")
-            @Override
-            public @NotNull InventoryPosition getPosition() {
-                return InventoryPosition.of(5, 0);
-            }
-        };
+                )
+                .menu((_, _) -> new FireworkEffectMenu(this, null))
+                .position(5, 0)
+                .build();
 
         // Creates an animated button that updates every second.
         // Clicking this button will reward the player with a firework with all the effects from this menu.
-        final Button<MenuHolder> fireworkButton = new AnimatedButton<>() {
+        final IButton<MenuHolder> fireworkButton = Buttons.animated()
+                .item(() -> ItemCreator.of(Material.FIREWORK_ROCKET).name("<primary>Created Firework").lore(List.of("<yellow>Click <gray>to get a copy of this firework.")))
+                .onClick((holder, click) -> {
+                    final ItemStack firework = new ItemStack(Material.FIREWORK_ROCKET);
+                    final FireworkMeta fwMeta = (FireworkMeta) firework.getItemMeta();
+                    fwMeta.setPower(meta.getPower());
+                    fwMeta.addEffects(effects);
+                    firework.setItemMeta(fwMeta);
 
-            @Override
-            public ItemCreator createItem() {
-                return ItemCreator.of(Material.FIREWORK_ROCKET).name("<primary>Created Firework").lore(List.of("<yellow>Click <gray>to get a copy of this firework.")).build();
-            }
-
-            @Override
-            public void onClicked(@NotNull MenuHolder user, Menu menu, ClickType click) {
-                final ItemStack firework = new ItemStack(Material.FIREWORK_ROCKET);
-                final FireworkMeta fwMeta = (FireworkMeta) firework.getItemMeta();
-                fwMeta.setPower(meta.getPower());
-                fwMeta.addEffects(effects);
-                firework.setItemMeta(fwMeta);
-
-                user.player().getInventory().addItem(firework);
-            }
-
-            @Contract(" -> new")
-            @Override
-            public @NotNull InventoryPosition getPosition() {
-                return InventoryPosition.of(5, 2);
-            }
-        };
+                    holder.player().getInventory().addItem(firework);
+                })
+                .position(5, 2)
+                .build();
 
         return List.of(addEffect, powerButton, fireworkButton);
     }
 
     // Converts a FireworkEffect to an ItemStack.
     @Override
-    public ItemCreator convertToStack(FireworkEffect effect) {
+    public ItemCreator.ItemCreatorBuilder convertToStack(FireworkEffect effect) {
         // Build a firework star.
         final ItemStack itemStack = new ItemStack(Material.FIREWORK_STAR);
         final FireworkEffectMeta meta = (FireworkEffectMeta) itemStack.getItemMeta();
@@ -203,8 +161,7 @@ public final class FireworkMenu extends PaginatedMenu<MenuHolder, FireworkEffect
         return ItemCreator.of(itemStack)
                 .name("<primary>" + WordUtils.capitalizeFully(effect.getType().name().replace("_", " ")))
                 .lore(lore)
-                .options(ItemOptions.builder().hiddenComponent(DataComponentTypes.FIREWORK_EXPLOSION))
-                .build();
+                .options(ItemOptions.builder().hiddenComponent(DataComponentTypes.FIREWORK_EXPLOSION));
     }
 
     // Get the hover effect from the effect.
@@ -257,7 +214,7 @@ public final class FireworkMenu extends PaginatedMenu<MenuHolder, FireworkEffect
         // We are left-clicking, so we want to edit the effect.
         if (click.isLeftClick()) {
             // Creates the FireworkEffectMenu and switches to it.
-            new FireworkEffectMenu(this, effect).switchMenu(user, this);
+            new FireworkEffectMenu(this, effect).switchTo(user);
         }
     }
 

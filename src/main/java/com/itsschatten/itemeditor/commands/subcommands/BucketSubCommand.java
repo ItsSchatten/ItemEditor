@@ -1,12 +1,13 @@
 package com.itsschatten.itemeditor.commands.subcommands;
 
-import com.itsschatten.yggdrasil.commands.arguments.GenericEnumArgument;
 import com.itsschatten.itemeditor.utils.ItemValidator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
+import com.itsschatten.yggdrasil.commands.arguments.GenericEnumArgument;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import io.papermc.paper.datacomponent.DataComponentTypes;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.DyeColor;
@@ -19,6 +20,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.TropicalFishBucketMeta;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
 public final class BucketSubCommand extends BrigadierCommand {
@@ -54,24 +56,30 @@ public final class BucketSubCommand extends BrigadierCommand {
                             // Get the item's meta and check if it's null, it really shouldn't be but safety.
                             final ItemMeta meta = stack.getItemMeta();
 
-                            if (meta instanceof TropicalFishBucketMeta tropicalFishBucketMeta) {
-                                if (tropicalFishBucketMeta.hasVariant()) {
-                                    Utils.tell(user, """
-                                            <primary>Body Color: {body}
-                                            Pattern: <secondary>{pattern}</secondary>
-                                            Pattern Color: {color}"""
-                                            .replace("{body}", "<c:" + Integer.toHexString(tropicalFishBucketMeta.getBodyColor().getColor().asRGB()) + ">" + tropicalFishBucketMeta.getBodyColor().name().toLowerCase().replace("_", " ") + "</c>")
-                                            .replace("{color}", "<c:" + Integer.toHexString(tropicalFishBucketMeta.getPatternColor().getColor().asRGB()) + ">" + tropicalFishBucketMeta.getPatternColor().name().toLowerCase().replace("_", " ") + "</c>")
-                                            .replace("{pattern}", tropicalFishBucketMeta.getPattern().name().toLowerCase().replace("_", " ")));
-                                } else {
+                            if (meta instanceof TropicalFishBucketMeta) {
+                                final TropicalFish.Pattern pattern = stack.getData(DataComponentTypes.TROPICAL_FISH_PATTERN);
+                                final DyeColor patternColor = stack.getData(DataComponentTypes.TROPICAL_FISH_PATTERN_COLOR);
+                                final DyeColor body = stack.getData(DataComponentTypes.TROPICAL_FISH_BASE_COLOR);
+
+                                if (pattern == null && patternColor == null && body == null) {
                                     Utils.tell(user, "<primary>Your tropical fish bucket doesn't have a variant!");
+                                    return 0;
                                 }
-                            } else if (meta instanceof AxolotlBucketMeta axolotlBucketMeta) {
-                                if (axolotlBucketMeta.hasVariant()) {
-                                    Utils.tell(user, "<primary>Your axolotl's variant is currently <secondary>" + axolotlBucketMeta.getVariant().name().toLowerCase().replace("_", " ") + "</secondary>");
-                                } else {
+
+                                Utils.tell(user, """
+                                        <primary>Body Color: {body}
+                                        Pattern: <secondary>{pattern}</secondary>
+                                        Pattern Color: {color}"""
+                                        .replace("{body}", body == null ? "<red>Unset" : "<c:#" + Integer.toHexString(body.getColor().asRGB()) + ">" + body.name().toLowerCase().replace("_", " ") + "</c>")
+                                        .replace("{color}", patternColor == null ? "<red>Unset" :  "<c:#" + Integer.toHexString(patternColor.getColor().asRGB()) + ">" + patternColor.name().toLowerCase().replace("_", " ") + "</c>")
+                                        .replace("{pattern}", pattern == null ? "<red>Unknown" : pattern.name().toLowerCase().replace("_", " ")));
+                            } else if (meta instanceof AxolotlBucketMeta) {
+                                final Axolotl.Variant variant = stack.getData(DataComponentTypes.AXOLOTL_VARIANT);
+                                if (variant == null) {
                                     Utils.tell(user, "<primary>Your bucket doesn't have a variant.");
+                                    return 0;
                                 }
+                                Utils.tell(user, "<primary>Your axolotl's variant is currently <secondary>" + variant.name().toLowerCase().replace("_", " ") + "</secondary>");
                             } else {
                                 Utils.tell(user, "<red>Your item is not a valid bucket!");
                             }
@@ -80,40 +88,35 @@ public final class BucketSubCommand extends BrigadierCommand {
                         })
                 )
                 .then(argument("variant", GenericEnumArgument.generic(Axolotl.Variant.class))
-                        .executes(context -> handleAxolotl((Player) context.getSource().getSender(), (meta) -> {
+                        .executes(context -> handleAxolotl((Player) context.getSource().getSender(), (item) -> {
                             final Axolotl.Variant variant = context.getArgument("variant", Axolotl.Variant.class);
-                            meta.setVariant(variant);
+                            item.setData(DataComponentTypes.AXOLOTL_VARIANT, variant);
                             Utils.tell(context.getSource(), "<primary>Set your axolotl variant to <secondary>" + variant.name().toLowerCase().replace("_", " ") + "</secondary>.");
-                            return meta;
                         }))
                 )
                 .then(literal("body")
                         .then(argument("color", GenericEnumArgument.generic(DyeColor.class))
-                                .executes(context -> handleTropicalFish((Player) context.getSource().getSender(), (meta) -> {
-                                    meta.setBodyColor(context.getArgument("color", DyeColor.class));
-                                    return meta;
+                                .executes(context -> handleTropicalFish((Player) context.getSource().getSender(), (item) -> {
+                                    item.setData(DataComponentTypes.TROPICAL_FISH_BASE_COLOR, context.getArgument("color", DyeColor.class));
                                 }))
                         )
                 )
                 .then(literal("pattern")
                         .then(argument("pattern", GenericEnumArgument.generic(TropicalFish.Pattern.class))
                                 .then(argument("color", GenericEnumArgument.generic(DyeColor.class))
-                                        .executes(context -> handleTropicalFish((Player) context.getSource().getSender(), (meta) -> {
-                                            meta.setPattern(context.getArgument("pattern", TropicalFish.Pattern.class));
-                                            meta.setPatternColor(context.getArgument("color", DyeColor.class));
-                                            return meta;
+                                        .executes(context -> handleTropicalFish((Player) context.getSource().getSender(), (item) -> {
+                                            item.setData(DataComponentTypes.TROPICAL_FISH_PATTERN, context.getArgument("pattern", TropicalFish.Pattern.class));
+                                            item.setData(DataComponentTypes.TROPICAL_FISH_PATTERN_COLOR, context.getArgument("color", DyeColor.class));
                                         }))
                                 )
+                                .executes(context -> handleTropicalFish((Player) context.getSource().getSender(),
+                                        (item) -> item.setData(DataComponentTypes.TROPICAL_FISH_PATTERN, context.getArgument("pattern", TropicalFish.Pattern.class))))
                         )
-                        .executes(context -> handleTropicalFish((Player) context.getSource().getSender(), (meta) -> {
-                            meta.setPattern(context.getArgument("pattern", TropicalFish.Pattern.class));
-                            return meta;
-                        }))
                 )
                 ;
     }
 
-    private int handleTropicalFish(final @NotNull Player user, final UnaryOperator<TropicalFishBucketMeta> function) {
+    private int handleTropicalFish(final @NotNull Player user, final Consumer<ItemStack> function) {
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
         if (ItemValidator.isInvalid(stack)) {
@@ -122,16 +125,16 @@ public final class BucketSubCommand extends BrigadierCommand {
         }
 
         // Get the item's meta and check if it's null, it really shouldn't be but safety.
-        if (!(stack.getItemMeta() instanceof TropicalFishBucketMeta meta)) {
+        if (!(stack.getItemMeta() instanceof TropicalFishBucketMeta)) {
             Utils.tell(user, "<red>You are not holding a tropical fish bucket!");
             return 0;
         }
 
-        stack.setItemMeta(function.apply(meta));
+        function.accept(stack);
         return 1;
     }
 
-    private int handleAxolotl(final @NotNull Player user, final UnaryOperator<AxolotlBucketMeta> function) {
+    private int handleAxolotl(final @NotNull Player user, final Consumer<ItemStack> function) {
         // Get the item stack in the user's main hand.
         final ItemStack stack = user.getInventory().getItemInMainHand();
         if (ItemValidator.isInvalid(stack)) {
@@ -140,12 +143,12 @@ public final class BucketSubCommand extends BrigadierCommand {
         }
 
         // Get the item's meta and check if it's null, it really shouldn't be but safety.
-        if (!(stack.getItemMeta() instanceof AxolotlBucketMeta meta)) {
+        if (!(stack.getItemMeta() instanceof AxolotlBucketMeta)) {
             Utils.tell(user, "<red>You are not holding an axolotl bucket!");
             return 0;
         }
 
-        stack.setItemMeta(function.apply(meta));
+        function.accept(stack);
         return 1;
     }
 }

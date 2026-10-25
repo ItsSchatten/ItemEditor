@@ -8,11 +8,9 @@ import com.itsschatten.yggdrasil.items.SkinTexture;
 import com.itsschatten.yggdrasil.items.UtilityItems;
 import com.itsschatten.yggdrasil.items.manipulators.ColorManipulator;
 import com.itsschatten.yggdrasil.items.manipulators.SkullManipulator;
-import com.itsschatten.yggdrasil.menus.Menu;
-import com.itsschatten.yggdrasil.menus.buttons.Button;
-import com.itsschatten.yggdrasil.menus.buttons.MenuTriggerButton;
+import com.itsschatten.yggdrasil.menus.buttons.Buttons;
+import com.itsschatten.yggdrasil.menus.buttons.interfaces.IButton;
 import com.itsschatten.yggdrasil.menus.types.PaginatedMenu;
-import com.itsschatten.yggdrasil.menus.utils.InventoryPosition;
 import com.itsschatten.yggdrasil.menus.utils.InventorySize;
 import com.itsschatten.yggdrasil.menus.utils.MenuHolder;
 import io.papermc.paper.datacomponent.DataComponentTypes;
@@ -59,31 +57,20 @@ public final class ConsumableEffectMenu extends PaginatedMenu<MenuHolder, Consum
     }
 
     @Override
-    public List<Button<MenuHolder>> makeButtons() {
-        return List.of(new MenuTriggerButton<>() {
-            @Override
-            public @NotNull Menu<MenuHolder> getMenu(MenuHolder user, ClickType click) {
-                return new ConsumableEffectCreateMenu(ConsumableEffectMenu.this);
-            }
-
-            @Override
-            public ItemCreator createItem() {
-                return ItemCreator.of(Material.PLAYER_HEAD)
+    public List<IButton<MenuHolder>> makeButtons() {
+        return List.of(Buttons.menuTrigger()
+                .menu((_, _) -> new ConsumableEffectCreateMenu(this))
+                .item(ItemCreator.of(Material.PLAYER_HEAD)
                         .name("Add New Effect")
                         .lore("Adds a new consume effect to your consumable.")
                         .manipulator(new SkullManipulator(new SkinTexture(UUID.fromString("934efd8c-1026-4ced-b56b-d9ba91221bbb"), "b056bc1244fcff99344f12aba42ac23fee6ef6e3351d27d273c1572531f")))
-                        .build();
-            }
-
-            @Override
-            public @NotNull InventoryPosition getPosition() {
-                return InventoryPosition.of(5, 1);
-            }
-        });
+                )
+                .position(5, 1)
+                .build());
     }
 
     @Override
-    public ItemCreator convertToStack(@NotNull ConsumeEffect consumeEffect) {
+    public ItemCreator.ItemCreatorBuilder convertToStack(@NotNull ConsumeEffect consumeEffect) {
         return switch (consumeEffect) {
             case final ConsumeEffect.ApplyStatusEffects effect -> {
                 final List<PotionEffect> effects = effect.effects();
@@ -103,14 +90,14 @@ public final class ConsumableEffectMenu extends PaginatedMenu<MenuHolder, Consum
 
                 yield ItemCreator.of(Material.POTION).display("<light_purple>Apply Status Effects").lore(lore)
                         .options(ItemOptions.builder().hiddenComponent(DataComponentTypes.POTION_CONTENTS))
-                        .manipulator(new ColorManipulator(color)).build();
+                        .manipulator(new ColorManipulator(color));
             }
             case final ConsumeEffect.ClearAllStatusEffects ignored ->
                     ItemCreator.of(Material.MILK_BUCKET).name("Clear All Effects").lore(
                             List.of(
                                     "<yellow>Left-Click<gray> to remove this effect."
                             )
-                    ).build();
+                    );
             case final ConsumeEffect.PlaySound effect ->
                     ItemCreator.of(Material.JUKEBOX).name("<green>Play Sound").lore(
                             List.of(
@@ -118,7 +105,7 @@ public final class ConsumableEffectMenu extends PaginatedMenu<MenuHolder, Consum
                                     "",
                                     "<yellow>Left-Click<gray> to remove this effect."
                             )
-                    ).build();
+                    );
             case final ConsumeEffect.RemoveStatusEffects effect -> {
                 final List<String> lore;
                 if (effect.removeEffects().size() > 2) {
@@ -136,7 +123,7 @@ public final class ConsumableEffectMenu extends PaginatedMenu<MenuHolder, Consum
                 );
 
 
-                yield ItemCreator.of(Material.BOWL).name("<red>Remove Status Effects").lore(lore).build();
+                yield ItemCreator.of(Material.BOWL).name("<red>Remove Status Effects").lore(lore);
             }
             case final ConsumeEffect.TeleportRandomly effect ->
                     ItemCreator.of(Material.CHORUS_FRUIT).name("<dark_purple>Random Teleport").lore(
@@ -145,7 +132,7 @@ public final class ConsumableEffectMenu extends PaginatedMenu<MenuHolder, Consum
                                     "",
                                     "<yellow>Left-Click<gray> to remove this effect."
                             )
-                    ).build();
+                    );
             default -> throw new IllegalArgumentException("Unknown effect: " + consumeEffect);
         };
     }

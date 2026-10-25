@@ -3,10 +3,10 @@ plugins {
     idea
 
     // Use Mojang mappings and a few other PaperAPI QOL.
-    id("io.papermc.paperweight.userdev") version "2.0.0-beta.18"
+    id("io.papermc.paperweight.userdev") version "2.0.0-beta.21"
 
     // Automatic lombok and delombok configuration
-    id("io.freefair.lombok") version "9.0.0-rc2"
+    id("io.freefair.lombok") version "9.0.0"
 
     // Shade libraries into one "UberJar"
     id("com.gradleup.shadow") version "9.2.1"
@@ -23,7 +23,7 @@ ext {
 
 group = "com.itsschatten"
 version = project.property("version")!! as String
-java.sourceCompatibility = JavaVersion.VERSION_21
+java.sourceCompatibility = JavaVersion.VERSION_25
 
 repositories {
     // PaperMC.
@@ -39,7 +39,7 @@ repositories {
 }
 
 dependencies {
-    paperweight.paperDevBundle("1.21.8-R0.1-SNAPSHOT")
+    paperweight.paperDevBundle("26.3.build.+")
 
     implementation(platform("com.itsschatten:Yggdrasil-bom:1.0.2"))
     implementation("com.itsschatten:Yggdrasil") {
@@ -63,7 +63,7 @@ dependencies {
 tasks {
     java {
         withSourcesJar()
-        toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+        toolchain.languageVersion.set(JavaLanguageVersion.of(25))
     }
 
     assemble {
@@ -104,5 +104,5 @@ tasks {
 }
 
 java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+    toolchain.languageVersion.set(JavaLanguageVersion.of(25))
 }

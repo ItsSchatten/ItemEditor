@@ -12,16 +12,21 @@ import io.papermc.paper.command.brigadier.argument.RegistryArgumentExtractor;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.DamageResistant;
 import io.papermc.paper.registry.RegistryKey;
-import io.papermc.paper.registry.tag.TagKey;
+import io.papermc.paper.registry.TypedKey;
+import io.papermc.paper.registry.set.RegistrySet;
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import org.bukkit.damage.DamageType;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
+// FIXME: This may be broken.
 public final class ResistantSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
@@ -38,7 +43,7 @@ public final class ResistantSubCommand extends BrigadierCommand {
     public LiteralArgumentBuilder<CommandSourceStack> command() {
         return literal("resistant")
                 .then(argument("type", ArgumentTypes.resourceKey(RegistryKey.DAMAGE_TYPE))
-                        .executes(context -> updateResistance(context, () -> DamageResistant.damageResistant(TagKey.create(RegistryKey.DAMAGE_TYPE, RegistryArgumentExtractor.getTypedKey(context, RegistryKey.DAMAGE_TYPE, "type").key()))))
+                        .executes(context -> updateResistance(context, () -> DamageResistant.damageResistant(RegistrySet.keySet(RegistryKey.DAMAGE_TYPE, RegistryArgumentExtractor.getTypedKey(context, RegistryKey.DAMAGE_TYPE, "type")))))
                 )
                 .then(literal("-reset")
                         .executes(this::reset)
@@ -77,15 +82,19 @@ public final class ResistantSubCommand extends BrigadierCommand {
 
         if (stack.hasData(DataComponentTypes.DAMAGE_RESISTANT)) {
             final DamageResistant resistant = stack.getData(DataComponentTypes.DAMAGE_RESISTANT);
-            if (resistant.types().key().equals(update.types().key())) {
-                stack.unsetData(DataComponentTypes.DAMAGE_RESISTANT);
-                Utils.tell(context, "<primary>Your item is no longer resistant to <secondary>" + update.types().key() + "</secondary>.");
-                return 1;
+            for (TypedKey<DamageType> type : resistant.types()) {
+                for (TypedKey<DamageType> damageTypeTypedKey : update.types()) {
+                    if (type.equals(damageTypeTypedKey)) {
+                        stack.unsetData(DataComponentTypes.DAMAGE_RESISTANT);
+                        Utils.tell(context, "<primary>Your item is no longer resistant to <secondary>" + damageTypeTypedKey + "</secondary>.");
+                    }
+                }
             }
+            return 1;
         }
 
         stack.setData(DataComponentTypes.DAMAGE_RESISTANT, update);
-        Utils.tell(context, "<primary>Your item is now resistant to <secondary>" + update.types().key() + "</secondary>.");
+        Utils.tell(context, "<primary>Your item is now resistant to <secondary>" + update.types().values().stream().map(Key::asString).collect(Collectors.joining(", ")) + "</secondary>.");
         return 1;
     }
 

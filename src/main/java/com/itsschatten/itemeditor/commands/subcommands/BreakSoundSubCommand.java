@@ -17,7 +17,6 @@ import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Supplier;
@@ -70,7 +69,7 @@ public final class BreakSoundSubCommand extends BrigadierCommand {
         }
 
         final Key key = stack.getData(DataComponentTypes.BREAK_SOUND);
-        Utils.tell(user, "<primary>Break sound <dark_gray>» </dark_gray> <secondary>" + key.asString() + "</secondary>.");
+        Utils.tell(user, "<primary>Break sound <dark_gray>» </dark_gray> <secondary>" + (key == null ? "<red>None" : key.asString()) + "</secondary>.");
         return 1;
     }
 
@@ -91,7 +90,12 @@ public final class BreakSoundSubCommand extends BrigadierCommand {
             return 0;
         }
 
-        stack.setData(DataComponentTypes.BREAK_SOUND, operator.get());
+        final Key supplied = operator.get();
+        if (supplied == null) {
+            stack.resetData(DataComponentTypes.BREAK_SOUND);
+        } else {
+            stack.setData(DataComponentTypes.BREAK_SOUND, supplied);
+        }
         return 1;
     }
 

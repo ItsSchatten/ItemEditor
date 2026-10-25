@@ -1,16 +1,17 @@
 package com.itsschatten.itemeditor.commands;
 
 import com.itsschatten.itemeditor.commands.subcommands.*;
+import com.itsschatten.yggdrasil.ComponentPaginator;
 import com.itsschatten.yggdrasil.StringUtil;
 import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.commands.BrigadierCommand;
 import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.PluginDescriptionFile;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
@@ -23,6 +24,7 @@ import java.util.function.Predicate;
 public final class ItemEditorCommand extends BrigadierCommand {
 
     // TODO: can break, can place on
+    // TODO: (1.21.11) Attack Range, Damage Type, Kinetic Weapon, Minimum Attack Charge, Piercing Weapon, Use Effects
 
     /**
      * Constructs the command.
@@ -33,6 +35,7 @@ public final class ItemEditorCommand extends BrigadierCommand {
 
         addSubCommand(List.of(
                 new AmountSubCommand(),
+                new AnimationSubCommand(),
                 new ArmorTrimSubCommand(),
                 new AttributeSubCommand(),
                 new BannerSubCommand(),
@@ -58,6 +61,7 @@ public final class ItemEditorCommand extends BrigadierCommand {
                 new GliderSubCommand(),
                 new GoatHornSubCommand(),
                 new IntangibleSubCommand(),
+                new ItemNameSubCommand(),
                 new ItemNameSubCommand(),
                 new JukeboxSubCommand(),
                 new LoreSubCommand(),
@@ -92,15 +96,32 @@ public final class ItemEditorCommand extends BrigadierCommand {
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> command() {
         return literal("itemeditor")
+                .then(literal("help")
+                        .then(literal("-p").then(argument("page", IntegerArgumentType.integer(1))
+                                .executes(context -> {
+                                    showHelp(context.getSource(), IntegerArgumentType.getInteger(context, "page"));
+                                    return SUCCESS;
+                                }))
+                        )
+                )
                 .executes(context -> {
-                    final PluginDescriptionFile pdf = Utils.getInstance().getDescription();
-
-                    final Component component = StringUtil.color("<gradient:#D8D8F6:#978897><st>     </st> ItemEditor v" + pdf.getVersion() + " <st>     </st></gradient>").colorIfAbsent(TextColor.fromHexString("#F5D491")).appendNewline()
-                            .append(StringUtil.color("<gray><i>Developed by ItsSchatten</i></gray>")).appendNewline().appendNewline()
-                            .append(StringUtil.color("<gray><i>Hover over a command for additional information! Click it to suggest the command.</i><reset>\n<red>* Required argument. <aqua>* First argument. <gold>* Optional argument.")).appendNewline().appendNewline();
-
-                    Utils.tell(context.getSource(), component, subcommandDescriptionComponents());
+                    showHelp(context.getSource(), 1);
                     return Command.SINGLE_SUCCESS;
                 });
     }
+
+    private void showHelp(final CommandSourceStack aud, final int page) {
+        final ComponentPaginator paginator = new ComponentPaginator(subcommandDescriptionComponents(), true);
+        paginator.header("<gray><i>Hover over a command for additional information! Click it to suggest the command.</i><reset>\n<red>* Required argument. <aqua>* First argument. <gold>* Optional argument.");
+
+        if (page == 1) {
+            assert Utils.getInstance() != null;
+            final Component component = StringUtil.color("<gradient:#D8D8F6:#978897><st>     </st> ItemEditor v" + Utils.getInstance().getPluginMeta().getVersion() + " <st>     </st></gradient>").colorIfAbsent(TextColor.fromHexString("#F5D491")).appendNewline()
+                    .append(StringUtil.color("<gray><i>Developed by ItsSchatten</i></gray>")).appendNewline();
+            Utils.tell(aud, component);
+        }
+
+        paginator.show(aud, page);
+    }
+
 }

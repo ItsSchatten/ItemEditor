@@ -8,14 +8,17 @@ import com.itsschatten.yggdrasil.anvilgui.interfaces.Response;
 import com.itsschatten.yggdrasil.items.ItemCreator;
 import com.itsschatten.yggdrasil.items.ItemOptions;
 import com.itsschatten.yggdrasil.items.manipulators.ColorManipulator;
-import com.itsschatten.yggdrasil.menus.buttons.Button;
 import com.itsschatten.yggdrasil.menus.buttons.Buttons;
-import com.itsschatten.yggdrasil.menus.buttons.premade.ReturnButton;
+import com.itsschatten.yggdrasil.menus.buttons.impl.Button.ButtonBuilder;
+import com.itsschatten.yggdrasil.menus.buttons.interfaces.IButton;
 import com.itsschatten.yggdrasil.menus.types.StandardMenu;
 import com.itsschatten.yggdrasil.menus.utils.MenuHolder;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import org.apache.commons.lang3.math.NumberUtils;
-import org.bukkit.*;
+import org.bukkit.Bukkit;
+import org.bukkit.Keyed;
+import org.bukkit.Material;
+import org.bukkit.Registry;
 import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -49,7 +52,7 @@ public final class EffectCreationMenu extends StandardMenu<MenuHolder> {
     }
 
     @Override
-    public @Nullable ReturnButton.ReturnButtonBuilder<MenuHolder> getReturnButton() {
+    public @Nullable ButtonBuilder<MenuHolder, ?, ?> getReturnButton() {
         return Objects.requireNonNull(super.getReturnButton()).position(rows() - 1, 0);
     }
 
@@ -60,7 +63,7 @@ public final class EffectCreationMenu extends StandardMenu<MenuHolder> {
 
     @Contract(" -> new")
     @Override
-    public @NotNull @Unmodifiable List<Button<MenuHolder>> makeButtons() {
+    public @NotNull @Unmodifiable List<IButton<MenuHolder>> makeButtons() {
         return List.of(
                 Buttons.menuTrigger()
                         .item(ItemCreator.of(Material.POTION).display("<primary>Potion Type: <secondary>" + effect.key().asMinimalString())
@@ -82,7 +85,7 @@ public final class EffectCreationMenu extends StandardMenu<MenuHolder> {
                                 )
                         )
                         .position(1, 4)
-                        .onClick((holder, menu, click) -> {
+                        .onClick((holder, click) -> {
                             ambient = !ambient;
                         })
                         .build(),
@@ -95,7 +98,7 @@ public final class EffectCreationMenu extends StandardMenu<MenuHolder> {
                                 )
                         )
                         .position(1, 5)
-                        .onClick((holder, menu, click) -> {
+                        .onClick((holder, click) -> {
                             particles = !particles;
                         })
                         .build(),
@@ -108,7 +111,7 @@ public final class EffectCreationMenu extends StandardMenu<MenuHolder> {
                                 )
                         )
                         .position(1, 6)
-                        .onClick((holder, menu, click) -> {
+                        .onClick((holder, click) -> {
                             icon = !icon;
                         })
                         .build(),
@@ -116,14 +119,14 @@ public final class EffectCreationMenu extends StandardMenu<MenuHolder> {
                 Buttons.button()
                         .item(ItemCreator.of(Material.CLOCK).name("<primary>Duration").lore("Duration in ticks for this effect.", "", "<secondary>Current <arrow> <yellow>" + duration + " <dark_gray>[" + TimeUtils.getMinecraftTimeClock(duration) + "]").supplier())
                         .position(2, 4)
-                        .onClick((holder, menu, click) -> {
+                        .onClick((holder, click) -> {
                             configuring = true;
                             AnvilGUI.builder().holder(holder).plugin(Utils.getInstance())
                                     .title("Enter Duration in Ticks")
-                                    .clickHandler((integer, snapshot) -> CompletableFuture.completedFuture(Collections.singletonList(Response.openMenu(menu, holder))))
+                                    .clickHandler((integer, snapshot) -> CompletableFuture.completedFuture(Collections.singletonList(Response.openMenu(this, holder))))
                                     .onClose(snapshot -> {
                                         configuring = false;
-                                        if (!snapshot.text().isBlank()) {
+                                        if (snapshot.text() != null && !snapshot.text().isBlank()) {
                                             if (snapshot.text().equalsIgnoreCase("permanent")) {
                                                 duration = -1;
                                                 return;
@@ -134,25 +137,25 @@ public final class EffectCreationMenu extends StandardMenu<MenuHolder> {
                                             }
                                         }
                                     })
-                                    .response(Response.openMenu(menu, holder))
+                                    .response(Response.openMenu(this, holder))
                                     .open(holder);
                         })
                         .build(),
                 Buttons.button()
                         .item(ItemCreator.of(Material.GUNPOWDER).name("<primary>Amplifier").lore("The amplifier for this effect.", "", "<secondary>Current <arrow> <yellow>" + amplifier).supplier())
                         .position(2, 6)
-                        .onClick((holder, menu, click) -> {
+                        .onClick((holder, click) -> {
                             configuring = true;
                             AnvilGUI.builder().holder(holder).plugin(Utils.getInstance())
                                     .title("Enter Amplifier")
-                                    .clickHandler((integer, snapshot) -> CompletableFuture.completedFuture(Collections.singletonList(Response.openMenu(menu, holder))))
+                                    .clickHandler((integer, snapshot) -> CompletableFuture.completedFuture(Collections.singletonList(Response.openMenu(this, holder))))
                                     .onClose(snapshot -> {
                                         configuring = false;
                                         if (!snapshot.text().isBlank() && NumberUtils.isNumber(snapshot.text())) {
                                             amplifier = Math.min(NumberUtils.toInt(snapshot.text()), 255);
                                         }
                                     })
-                                    .response(Response.openMenu(menu, holder))
+                                    .response(Response.openMenu(this, holder))
                                     .open(holder);
                         })
                         .build()
@@ -169,7 +172,7 @@ public final class EffectCreationMenu extends StandardMenu<MenuHolder> {
         if (!configuring) {
             pass();
             // A tick must delay this. Otherwise, the close call will be called continuously.
-            Bukkit.getScheduler().runTaskLater(Utils.getInstance(), () -> parent.switchMenu(user, this), 1L);
+            Bukkit.getScheduler().runTaskLater(Utils.getInstance(), () -> parent.switchTo(user), 1L);
         }
     }
 

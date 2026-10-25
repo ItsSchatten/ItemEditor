@@ -45,7 +45,7 @@ public final class LoreSubCommand extends BrigadierCommand {
     // Description/Usage message for this sub command.
     @Override
     public @NotNull Component descriptionComponent() {
-        return StringUtil.color("<primary>/ie<secondary><add|set|remove|...> [values]</secondary>").hoverEvent(StringUtil.color("""
+        return StringUtil.color("<primary>/ie lore <secondary><add|set|remove|...> [values]</secondary>").hoverEvent(StringUtil.color("""
                 <primary>Manipulates lore on the item.
                 \s
                 ◼ <secondary><add><first> <lore><required></secondary> Adds a new lore line.

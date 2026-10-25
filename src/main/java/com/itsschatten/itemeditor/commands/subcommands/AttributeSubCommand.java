@@ -31,7 +31,6 @@ import java.util.Objects;
 import java.util.UUID;
 
 // FIXME: Convert to using a method.
-
 public final class AttributeSubCommand extends BrigadierCommand {
 
     // Description/Usage message for this sub command.
@@ -294,7 +293,6 @@ public final class AttributeSubCommand extends BrigadierCommand {
                 ;
     }
 
-    @SuppressWarnings("UnstableApiUsage")
     private void addAttributeModifier(final @NotNull Attribute attribute, double value, AttributeModifier.Operation operation, EquipmentSlotGroup group, final Player user, final @NotNull ItemStack stack, final @NotNull ItemMeta meta) {
         final AttributeModifier modifier = new AttributeModifier(new NamespacedKey("itemeditor", "ie-cmd-" + attribute.key().asMinimalString().replace(":", "-") + UUID.randomUUID().toString().substring(0, 5)), value, operation, group);
 

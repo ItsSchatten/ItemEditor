@@ -302,7 +302,7 @@ public final class ToolSubCommand extends BrigadierCommand {
 
         // Actual block.
         if (either.left().isPresent()) {
-            final String block = either.left().get().location().toString();
+            final String block = either.left().get().identifier().toString();
             final Material material = Material.matchMaterial(block);
 
             if (material == null) {

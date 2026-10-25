@@ -6,9 +6,9 @@ import com.itsschatten.yggdrasil.Utils;
 import com.itsschatten.yggdrasil.items.ItemCreator;
 import com.itsschatten.yggdrasil.items.ItemOptions;
 import com.itsschatten.yggdrasil.items.UtilityItems;
-import com.itsschatten.yggdrasil.menus.buttons.Button;
 import com.itsschatten.yggdrasil.menus.buttons.Buttons;
-import com.itsschatten.yggdrasil.menus.buttons.premade.ReturnButton;
+import com.itsschatten.yggdrasil.menus.buttons.impl.Button.ButtonBuilder;
+import com.itsschatten.yggdrasil.menus.buttons.interfaces.IButton;
 import com.itsschatten.yggdrasil.menus.types.PaginatedMenu;
 import com.itsschatten.yggdrasil.menus.utils.InventorySize;
 import com.itsschatten.yggdrasil.menus.utils.MenuHolder;
@@ -43,26 +43,26 @@ public final class SoundListMenu extends PaginatedMenu<MenuHolder, Sound> {
 
     @Contract(" -> new")
     @Override
-    public @NotNull @Unmodifiable List<Button<MenuHolder>> makeButtons() {
+    public @NotNull @Unmodifiable List<IButton<MenuHolder>> makeButtons() {
         return List.of(Buttons.button()
                 .item(ItemCreator.of(Material.BARRIER).name("<red>Stop Playing Sound").lore("<yellow>Click</yellow> to stop playing the sound.").supplier())
-                .onClick((holder, menu, click) -> holder.player().stopAllSounds())
+                .onClick((holder, click) -> holder.player().stopAllSounds())
                 .position(5, 7)
                 .build());
     }
 
     @Override
-    public @Nullable ReturnButton.ReturnButtonBuilder<MenuHolder> getReturnButton() {
+    public @Nullable ButtonBuilder<MenuHolder, ?, ?> getReturnButton() {
         return Objects.requireNonNull(super.getReturnButton()).position(rows() - 1, 0);
     }
 
     @Override
-    public ItemCreator convertToStack(Sound sound) {
+    public ItemCreator.ItemCreatorBuilder convertToStack(Sound sound) {
         return ItemCreator.of(Material.NOTE_BLOCK).name("<primary>" + Objects.requireNonNull(Registry.SOUNDS.getKey(sound)).key().asMinimalString() + "</primary>")
                 .lore("<yellow>Left-Click</yellow> to select this sound.", "<yellow>Right-Click</yellow> to play this sound.")
                 .options(ItemOptions.builder().glow(parent.options instanceof ConsumeEffectOptions.PlaySoundOptions(
                         net.kyori.adventure.key.Key sound1
-                ) && Objects.requireNonNull(Registry.SOUNDS.getKey(sound)).key().equals(sound1)).build()).build();
+                ) && Objects.requireNonNull(Registry.SOUNDS.getKey(sound)).key().equals(sound1)).build());
     }
 
     @Override
@@ -82,7 +82,7 @@ public final class SoundListMenu extends PaginatedMenu<MenuHolder, Sound> {
             user.player().playSound(net.kyori.adventure.sound.Sound.sound().type(Objects.requireNonNull(Registry.SOUNDS.getKey(sound)).key()).build());
         } else {
             parent.options = new ConsumeEffectOptions.PlaySoundOptions(Objects.requireNonNull(Registry.SOUNDS.getKey(sound)).key());
-            parent.switchMenu(user, this);
+            parent.switchTo(user);
         }
     }
 }

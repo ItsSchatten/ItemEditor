@@ -16,8 +16,10 @@ import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.BlocksAttacks;
 import io.papermc.paper.datacomponent.item.blocksattacks.DamageReduction;
 import io.papermc.paper.datacomponent.item.blocksattacks.ItemDamageFunction;
+import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
 import io.papermc.paper.registry.TypedKey;
+import io.papermc.paper.registry.set.RegistryKeySet;
 import io.papermc.paper.registry.set.RegistrySet;
 import io.papermc.paper.registry.tag.TagKey;
 import net.kyori.adventure.key.Key;
@@ -30,6 +32,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 
 public final class BlocksAttacksSubCommand extends BrigadierCommand {
 
@@ -218,8 +221,8 @@ public final class BlocksAttacksSubCommand extends BrigadierCommand {
                 .then(literal("bypassed_by")
                         .then(argument("damage", ArgumentTypes.resourceKey(RegistryKey.DAMAGE_TYPE))
                                 .executes(context -> updateBlocksAttacks(context, builder -> {
-                                    final Key key = RegistryArgumentExtractor.getTypedKey(context, RegistryKey.DAMAGE_TYPE, "damage");
-                                    builder.bypassedBy(TagKey.create(RegistryKey.DAMAGE_TYPE, key));
+                                    final TypedKey<DamageType> key = RegistryArgumentExtractor.getTypedKey(context, RegistryKey.DAMAGE_TYPE, "damage");
+                                    builder.bypassedBy(RegistrySet.keySet(RegistryKey.DAMAGE_TYPE, key));
                                     Utils.tell(context, "<primary><secondary>" + key.asString() + "</secondary> damage now bypasses your shield.");
                                     return builder;
                                 }))
@@ -351,7 +354,7 @@ public final class BlocksAttacksSubCommand extends BrigadierCommand {
                     .replace("{disable}", attacks.disableSound().asString())
                     .replace("{delay}", String.valueOf(attacks.blockDelaySeconds()))
                     .replace("{damage_function}", "<hover:show_text:'" + damageFunction + "'><info>[Hover the value]</info></hover>")
-                    .replace("{bypassed}", attacks.bypassedBy().key().asString())
+                    .replace("{bypassed}", attacks.bypassedBy().values().stream().map(TypedKey::asString).collect(Collectors.joining(", ")))
             );
         }
 
@@ -368,7 +371,7 @@ public final class BlocksAttacksSubCommand extends BrigadierCommand {
 
             builder.append("<primary> ◼ <secondary><hover:show_text:'").append(values).append("'>").append(reduction.type() == null ? "null" : reduction.type().registryKey().key().asString()).append("</hover></secondary><br>");
         });
-        final StringPaginator paginator = new StringPaginator(builder.toString(), "/ie shield -view");
+        final StringPaginator paginator = new StringPaginator(builder.toString(), true);
         Utils.tell(user, paginator.page(page).asString());
         Utils.tell(user, paginator.navigation(page));
         return SUCCESS;
